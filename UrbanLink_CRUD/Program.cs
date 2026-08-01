@@ -3,6 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
 using UrbanLink_CRUD.Models.Data;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +42,10 @@ builder.Services.AddAuthentication(options =>
 
 // 3. Configure OpenAPI
 builder.Services.AddOpenApi();
+
+// Tell the application about your Database Context
+builder.Services.AddDbContext<ULDBContext>(options =>
+options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
 
 var app = builder.Build();
 

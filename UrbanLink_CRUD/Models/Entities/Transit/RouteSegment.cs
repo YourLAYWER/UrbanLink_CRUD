@@ -2,7 +2,7 @@
 {
     public class RouteSegment
     {
-        public int SegmentID { get; set; }
+        public int ID { get; set; }
 
         // Foreign Key to TransitProvider
         public int ProviderID { get; set; }

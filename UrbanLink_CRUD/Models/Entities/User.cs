@@ -17,8 +17,8 @@ namespace UrbanLink_CRUD.Models.Entities
 
 
         // Navigation Properties ( A user has many tickets and orders)
-        public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
-        public ICollection<Order> Orders { get; set; } = new List<Order>();
+        //public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
+        //public ICollection<Order> Orders { get; set; } = new List<Order>();
 
 
     }

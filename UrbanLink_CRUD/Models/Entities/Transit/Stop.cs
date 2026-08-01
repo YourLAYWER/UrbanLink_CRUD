@@ -2,7 +2,7 @@
 {
     public class Stop
     {
-        public int StopID { get; set; }
+        public int ID { get; set; }
         public string Name { get; set; } = string.Empty;
 
         //Using double for precision in latitude and longitude
