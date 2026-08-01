@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using System.Text;
 using System.Text.Json.Serialization;
 using UrbanLink_CRUD.Models.Data;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,16 +41,42 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// 3. Configure OpenAPI
-builder.Services.AddOpenApi();
+// Configure OpenAPI
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "UrbanLink API", Version = "v1" });
+
+    // 1. Define the Security Scheme
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. \r\n\r\n" +
+                      "Enter 'Bearer' [space] and then your token in the text input below.\r\n\r\n" +
+                      "Example: 'Bearer eyJhbGciOiJIUzI1Ni...'",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    // 2. Apply the Security Requirement globally 
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        {
+            // Pass the document context to the reference
+            new OpenApiSecuritySchemeReference("Bearer", document),
+            new List<string>() // Must be an IList<string>, not a string array
+        }
+    }); // Added the missing semicolon here
+});
 
 // Tell the application about your Database Context
 builder.Services.AddDbContext<ULDBContext>(options =>
-options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
 
 var app = builder.Build();
 
-// --- THIS BLOCK TO RUNS THE SEEDER ---
+// --- THIS BLOCK RUNS THE SEEDER ---
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -75,7 +102,14 @@ using (var scope = app.Services.CreateScope())
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    // Generate the Swagger JSON document
+    app.UseSwagger();
+
+    // Serve the Swagger UI web page
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "UrbanLink API v1");
+    });
 }
 
 app.UseHttpsRedirection();
@@ -85,4 +119,5 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
 app.Run();
