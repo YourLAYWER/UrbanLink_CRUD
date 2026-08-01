@@ -61,7 +61,7 @@ namespace UrbanLink_CRUD.Controllers.JWTAuthentication
         public IActionResult Login([FromBody] LoginRequestDto request)
         {
             // 1. Find the user in the database
-            var user = _context.User.FirstOrDefault(u => u.Email == request.email);
+            var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
 
             if (user == null)
             {
@@ -71,18 +71,18 @@ namespace UrbanLink_CRUD.Controllers.JWTAuthentication
             // 2. Verify the password
             // PRO TIP: In production, NEVER store plain text passwords. 
             // You would use BCrypt here: bool isValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
-            if (user.PasswordHash != request.password)
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
                 return Unauthorized(new { message = "Invalid email or password." });
             }
 
             // 3. Create the Claims (The payload embedded inside the token)
             var claims = new List<Claim>
-        {
+            {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.CommuterProfile) // e.g., "Student" or "Standard"
-        };
+            };
             // 4. Generate the cryptographic signature
             var jwtSettings = _configuration.GetSection("Jwt");
             var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
