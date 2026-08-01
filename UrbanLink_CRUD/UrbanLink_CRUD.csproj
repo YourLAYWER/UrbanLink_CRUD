@@ -17,7 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Models\Dtos\Authentication\Login\" />
+    <Folder Include="Models\Dtos\Authentication\Register\" />
     <Folder Include="Models\Entities\Aggregator\" />
+    <Folder Include="Models\Dtos\" />
   </ItemGroup>
 
 </Project>
