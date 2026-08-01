@@ -1,0 +1,6 @@
+@UrbanLink_CRUD_HostAddress = http://localhost:5000
+
+GET {{UrbanLink_CRUD_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
