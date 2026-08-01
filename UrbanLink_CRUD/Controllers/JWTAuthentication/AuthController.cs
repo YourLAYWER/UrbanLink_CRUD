@@ -41,7 +41,7 @@ namespace UrbanLink_CRUD.Controllers.JWTAuthentication
             // 3. Create the new User entity from the DTO
             var newUser = new User
             {
-                Name = request.FullName,
+                Name = request.FullName, 
                 Email = request.Email,
                 Password = hashedPassword, // Store the hash, NEVER the plain text
                 CommuterProfile = request.CommuterProfile,

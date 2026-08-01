@@ -1,7 +1,8 @@
-using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json.Serialization;
+using UrbanLink_CRUD.Models.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +44,29 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// --- THIS BLOCK TO RUNS THE SEEDER ---
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ULDBContext>();
+
+        // Optional but recommended: Ensure the database exists and migrations are applied
+        // context.Database.Migrate(); 
+
+        // Call your seeding method
+        DbInitializer.SeedAdminUser(context);
+    }
+    catch (Exception ex)
+    {
+        // Log the error if seeding fails (e.g., database isn't running)
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while seeding the database.");
+    }
+}
+// -----------------------------------------
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -51,7 +75,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// These two MUST appear in this exact order, BEFORE MapControllers()
+// These two MUST appear in this exact order, Authentication first, then Authorization. Otherwise, you will get 401 Unauthorized errors.
 app.UseAuthentication();
 app.UseAuthorization();
 
