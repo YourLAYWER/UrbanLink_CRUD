@@ -41,9 +41,9 @@ namespace UrbanLink_CRUD.Controllers.JWTAuthentication
             // 3. Create the new User entity from the DTO
             var newUser = new User
             {
-                FullName = request.FullName,
+                Name = request.FullName,
                 Email = request.Email,
-                PasswordHash = hashedPassword, // Store the hash, NEVER the plain text
+                Password = hashedPassword, // Store the hash, NEVER the plain text
                 CommuterProfile = request.CommuterProfile,
                 CreatedAt = DateTime.UtcNow
             };
@@ -71,7 +71,7 @@ namespace UrbanLink_CRUD.Controllers.JWTAuthentication
             // 2. Verify the password
             // PRO TIP: In production, NEVER store plain text passwords. 
             // You would use BCrypt here: bool isValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
-            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
             {
                 return Unauthorized(new { message = "Invalid email or password." });
             }

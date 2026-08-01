@@ -9,5 +9,11 @@ namespace UrbanLink_CRUD.Models.Data
         public ULDBContext(DbContextOptions<ULDBContext> options) : base(options)
         {
         }
+
+        public DbSet<Entities.User> Users { get; set; } = null!;
+        public DbSet<Entities.Transit.Stop> Stops { get; set; } = null!;
+        public DbSet<Entities.Transit.Journey> Journeys { get; set; } = null!;
+        public DbSet<Entities.Transit.RouteSegment> RouteSegments { get; set; } = null!;
+        public DbSet<Entities.Transit.TransitProvider> TransitProviders { get; set; } = null!;
     }
 }

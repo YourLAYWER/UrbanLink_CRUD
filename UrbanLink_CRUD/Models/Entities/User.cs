@@ -13,7 +13,7 @@ namespace UrbanLink_CRUD.Models.Entities
         // CommuterProfile can be (e.g ...,"Standard", "Student", or "Pensioner")
         public string CommuterProfile { get; set; } = "Standard";
 
-        public DateTime CreateAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
 
         // Navigation Properties ( A user has many tickets and orders)
