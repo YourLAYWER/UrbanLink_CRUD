@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using UrbanLink_CRUD.Models.Entities.Aggregator;
+using UrbanLink_CRUD.Models.Entities.Transit;
 
 
 
@@ -25,6 +26,15 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<RetailerProduct> RetailerProducts { get; set; } = null!;
         public DbSet<Order> Orders { get; set; } = null!;
         public DbSet<Entities.Notification> Notifications { get; set; } = null!;
+        public DbSet<Product> Products { get; set; } = null!;
+
+        public DbSet<OrderItem> OrderItems { get; set; } = null!;
+
+        public DbSet<Ticket> Tickets { get; set; } = null!;
+
+        public DbSet<Cart> Carts { get; set; } = null!;
+
+        public DbSet<CartItem> CartItems { get; set; } = null!;
 
     }
 }

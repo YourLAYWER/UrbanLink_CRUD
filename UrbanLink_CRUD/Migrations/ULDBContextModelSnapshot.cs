@@ -22,6 +22,53 @@ namespace UrbanLink_CRUD.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.Cart", b =>
+                {
+                    b.Property<int>("CartID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CartID"));
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("CartID");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Carts");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.CartItem", b =>
+                {
+                    b.Property<int>("CartItemID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CartItemID"));
+
+                    b.Property<int>("CartID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Qty")
+                        .HasColumnType("int");
+
+                    b.HasKey("CartItemID");
+
+                    b.HasIndex("CartID");
+
+                    b.HasIndex("ProductID");
+
+                    b.ToTable("CartItems");
+                });
+
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.Order", b =>
                 {
                     b.Property<int>("Id")
@@ -59,6 +106,57 @@ namespace UrbanLink_CRUD.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Orders");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.OrderItem", b =>
+                {
+                    b.Property<int>("OrderItemID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderItemID"));
+
+                    b.Property<int>("OrderID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.HasKey("OrderItemID");
+
+                    b.HasIndex("OrderID");
+
+                    b.HasIndex("ProductID");
+
+                    b.ToTable("OrderItems");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.Product", b =>
+                {
+                    b.Property<int>("ProductID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProductID"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImageURL")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UniversalName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("ProductID");
+
+                    b.ToTable("Products");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.Retailer", b =>
@@ -245,19 +343,25 @@ namespace UrbanLink_CRUD.Migrations
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteStop", b =>
                 {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
+
+                    b.Property<int?>("RouteSegmentID")
+                        .HasColumnType("int");
+
                     b.Property<int>("SegmentID")
                         .HasColumnType("int");
 
                     b.Property<int>("StopID")
                         .HasColumnType("int");
 
-                    b.Property<int?>("RouteSegmentID")
-                        .HasColumnType("int");
-
                     b.Property<int>("StopSequence")
                         .HasColumnType("int");
 
-                    b.HasKey("SegmentID", "StopID");
+                    b.HasKey("ID");
 
                     b.HasIndex("RouteSegmentID");
 
@@ -290,6 +394,26 @@ namespace UrbanLink_CRUD.Migrations
                     b.HasKey("ID");
 
                     b.ToTable("Stops");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Ticket", b =>
+                {
+                    b.Property<int>("TicketID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TicketID"));
+
+                    b.Property<string>("QRCodeData")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("TicketID");
+
+                    b.ToTable("Tickets");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.TransitProvider", b =>
@@ -349,6 +473,36 @@ namespace UrbanLink_CRUD.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.Cart", b =>
+                {
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.CartItem", b =>
+                {
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Aggregator.Cart", "Cart")
+                        .WithMany("CartItems")
+                        .HasForeignKey("CartID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Aggregator.Product", "Product")
+                        .WithMany("CartItems")
+                        .HasForeignKey("ProductID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Cart");
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.Order", b =>
                 {
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Aggregator.Retailer", "Retailer")
@@ -366,6 +520,25 @@ namespace UrbanLink_CRUD.Migrations
                     b.Navigation("Retailer");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.OrderItem", b =>
+                {
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Aggregator.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Aggregator.Product", "Product")
+                        .WithMany("OrderItems")
+                        .HasForeignKey("ProductID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+
+                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.RetailerProduct", b =>
@@ -442,6 +615,18 @@ namespace UrbanLink_CRUD.Migrations
                     b.Navigation("RouteSegment");
 
                     b.Navigation("Stop");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.Cart", b =>
+                {
+                    b.Navigation("CartItems");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.Product", b =>
+                {
+                    b.Navigation("CartItems");
+
+                    b.Navigation("OrderItems");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.Retailer", b =>
