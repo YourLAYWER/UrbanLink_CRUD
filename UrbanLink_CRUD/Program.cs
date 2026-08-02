@@ -112,7 +112,9 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+
+// Disabled UseHttpsRedirection to allow access for the Mobile application
+// app.UseHttpsRedirection();
 
 // These two MUST appear in this exact order, Authentication first, then Authorization. Otherwise, you will get 401 Unauthorized errors.
 app.UseAuthentication();

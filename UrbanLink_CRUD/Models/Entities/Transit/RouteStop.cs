@@ -1,9 +1,14 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace UrbanLink_CRUD.Models.Entities.Transit
 {
+    [PrimaryKey(nameof(SegmentID), nameof(StopID))]
     public class RouteStop
     {
         // Composite primary key — SegmentID + StopID together uniquely identify a row.
         // No separate surrogate ID needed, matching the ERD.
+        // Define the composite key right above the class
+        
         public int SegmentID { get; set; }
         public int StopID { get; set; }
 
