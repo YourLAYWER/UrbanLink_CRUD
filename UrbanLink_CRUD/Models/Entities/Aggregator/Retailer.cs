@@ -1,6 +1,6 @@
 ﻿using System.Data;
 
-namespace UrbanLink_CRUD.Models.Entities
+namespace UrbanLink_CRUD.Models.Entities.Aggregator
 {
     public class Retailer
     {
