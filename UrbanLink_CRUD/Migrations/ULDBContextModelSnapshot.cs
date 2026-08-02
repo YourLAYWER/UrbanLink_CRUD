@@ -22,6 +22,118 @@ namespace UrbanLink_CRUD.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Order", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FulfillmentFeedback")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FulfillmentType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("OrderDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RetailerId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RetailerId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Orders");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Retailer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("CollectionAvailable")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("DeliveryFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Retailers");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.RetailerProduct", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CurrentPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("InStock")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("RetailerId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RetailerId");
+
+                    b.ToTable("RetailerProducts");
+                });
+
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Journey", b =>
                 {
                     b.Property<int>("ID")
@@ -185,6 +297,47 @@ namespace UrbanLink_CRUD.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Notification", b =>
+                {
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Order", b =>
+                {
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Retailer", "Retailer")
+                        .WithMany("Orders")
+                        .HasForeignKey("RetailerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Retailer");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.RetailerProduct", b =>
+                {
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Retailer", "Retailer")
+                        .WithMany("RetailerProducts")
+                        .HasForeignKey("RetailerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Retailer");
+                });
+
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Journey", b =>
                 {
                     b.HasOne("UrbanLink_CRUD.Models.Entities.User", "User")
@@ -203,6 +356,13 @@ namespace UrbanLink_CRUD.Migrations
                         .HasForeignKey("TransitProviderID");
 
                     b.Navigation("TransitProvider");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Retailer", b =>
+                {
+                    b.Navigation("Orders");
+
+                    b.Navigation("RetailerProducts");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.TransitProvider", b =>
