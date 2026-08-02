@@ -2,9 +2,8 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
 {
     public class RouteStop
     {
-        public int ID { get; set; }
-
-        // Foreign Keys
+        // Composite primary key — SegmentID + StopID together uniquely identify a row.
+        // No separate surrogate ID needed, matching the ERD.
         public int SegmentID { get; set; }
         public int StopID { get; set; }
 
