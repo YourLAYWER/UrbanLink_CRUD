@@ -4,27 +4,24 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
 {
     public class Journey
     {
-        public int ID { get; set; }
-        public int userID { get; set; }
-        public string StartStop { get; set; } = string.Empty;
-        public string EndStop { get; set; } = string.Empty;
+        public int Id { get; set; }
+        public int UserId { get; set; }
+        // CHANGED: Now points to the physical Stop IDs
+        public int StartStopId { get; set; }
+        public int EndStopId { get; set; }
+
         public decimal TotalCost { get; set; }
-        public string Status { get; set; } = "Active"; // Possible values: "Active", "Completed", "Cancelled"
 
-        // Security fields
-        public Guid TicketReference { get; set; } = Guid.NewGuid(); // Unique reference for the ticket
+        // NEW: Extracted from your algorithm's RoutingResult
+        public int TotalDurationMinutes { get; set; }
 
-        // Tracks the exact second the conductor scanned the ticket (Nullable until scanned)
-        public DateTime? ScanTimestamp { get; set; }
+        public string Status { get; set; } = "Active";
+        public Guid TicketReference { get; set; } = Guid.NewGuid();
+        public DateTime? RedeemedAt { get; set; }
 
-
-        // Nullable fields for when the trip is finished
-        public int? Rating { get; set; }
-        public string? FeedbackTag { get; set; }
-        public string? ReviewNotes { get; set; }
-
-
-        // Navigation Properties
+        public virtual ICollection<JourneyLeg> Legs { get; set; } = new List<JourneyLeg>();
         public virtual User? User { get; set; }
+        public virtual Stop? StartStop { get; set; }
+        public virtual Stop? EndStop { get; set; }
     }
 }
