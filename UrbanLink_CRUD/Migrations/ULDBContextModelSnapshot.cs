@@ -253,6 +253,9 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<string>("ReviewNotes")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("ScanTimestamp")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("StartStop")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -260,6 +263,9 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TicketReference")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("TotalCost")
                         .HasColumnType("decimal(18,2)");
@@ -285,10 +291,7 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<int>("JourneyID")
                         .HasColumnType("int");
 
-                    b.Property<int?>("RouteSegmentID")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SegmentID")
+                    b.Property<int>("RouteSegmentID")
                         .HasColumnType("int");
 
                     b.Property<int>("SequenceOrder")
@@ -343,25 +346,19 @@ namespace UrbanLink_CRUD.Migrations
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteStop", b =>
                 {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
-
-                    b.Property<int?>("RouteSegmentID")
-                        .HasColumnType("int");
-
                     b.Property<int>("SegmentID")
                         .HasColumnType("int");
 
                     b.Property<int>("StopID")
                         .HasColumnType("int");
 
+                    b.Property<int?>("RouteSegmentID")
+                        .HasColumnType("int");
+
                     b.Property<int>("StopSequence")
                         .HasColumnType("int");
 
-                    b.HasKey("ID");
+                    b.HasKey("SegmentID", "StopID");
 
                     b.HasIndex("RouteSegmentID");
 
@@ -584,7 +581,9 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.RouteSegment", "RouteSegment")
                         .WithMany()
-                        .HasForeignKey("RouteSegmentID");
+                        .HasForeignKey("RouteSegmentID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Journey");
 

@@ -9,7 +9,7 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
 
         // Foreign Keys
         public int JourneyID { get; set; }
-        public int SegmentID { get; set; }
+        public int RouteSegmentID { get; set; }
 
         // Navigation Properties
         public virtual Journey? Journey { get; set; }
