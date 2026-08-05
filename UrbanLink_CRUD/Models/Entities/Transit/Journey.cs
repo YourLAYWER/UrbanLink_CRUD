@@ -16,6 +16,7 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
         public int TotalDurationMinutes { get; set; }
 
         public string Status { get; set; } = "Active";
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public Guid TicketReference { get; set; } = Guid.NewGuid();
         public DateTime? RedeemedAt { get; set; }
 
