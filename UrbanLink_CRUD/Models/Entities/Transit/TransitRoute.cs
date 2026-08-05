@@ -5,8 +5,7 @@
         public int Id { get; set; }
         public string RouteName { get; set; } = string.Empty; // e.g., "Route 10"
         public string TransportType { get; set; } = string.Empty; // "Bus", "Train"
-
-        // --- NEW: The Foreign Key ---
+        public decimal BaseFare { get; set; }
         public int ProviderId { get; set; }
 
         // Navigation Properties

@@ -1,11 +1,13 @@
-﻿namespace UrbanLink_CRUD.Services.Routing_Logic
+﻿using System.Collections.Generic;
+
+namespace UrbanLink_CRUD.Services.Routing_Logic
 {
-    public class TransitSystemRouting
+    public class TransitSystemService
     {
         // --- 1. DATA MODELS ---
 
-        // Represents the edge in our graph fetched from the DB
-        public record RouteSegment(int OriginStopId, int DestinationStopId, int RouteId, int TravelTimeMinutes);
+        // Renamed to GraphEdge to avoid EF Core namespace collisions, and added Fare
+        public record GraphEdge(int OriginStopId, int DestinationStopId, int RouteId, int TravelTimeMinutes, decimal RouteBaseFare);
 
         // Represents the state in our Priority Queue
         public record SearchState(int StopId, int CurrentRouteId, int TotalTimeMinutes);
@@ -17,6 +19,9 @@
             public int StartStopId { get; set; }
             public int EndStopId { get; set; }
             public int LegDurationMinutes { get; set; }
+
+            // Added to track the accumulated cost per leg
+            public decimal LegFare { get; set; }
         }
 
         // A wrapper to return both the total time and the legs
@@ -27,11 +32,11 @@
 
         public class TransitRoutingService
         {
-            // The graph: OriginStopId -> List of outbound segments
-            private  Dictionary<int, List<RouteSegment>> _graph = new();
+            // The graph: OriginStopId -> List of outbound edges (lightweight records)
+            private Dictionary<int, List<GraphEdge>> _graph = new();
 
-            // Stores the IDs of stops where transfers are legally allowed (e.g., the 4 depots)
-            private  HashSet<int> _transferHubs = new();
+            // Stores the IDs of stops where transfers are legally allowed (e.g., the depots)
+            private HashSet<int> _transferHubs = new();
 
             // Configurable time penalty for making a transfer
             private const int TransferPenaltyMinutes = 10;
@@ -39,17 +44,17 @@
             /// <summary>
             /// Loads the master routing data into memory. Call this on application startup or caching layer.
             /// </summary>
-            public void InitializeGraph(IEnumerable<RouteSegment> dbSegments, IEnumerable<int> transferHubIds)
+            public void InitializeGraph(IEnumerable<GraphEdge> edges, IEnumerable<int> transferHubIds)
             {
-                var newGraph = new Dictionary<int, List<RouteSegment>>();
+                var newGraph = new Dictionary<int, List<GraphEdge>>();
                 var newHubs = new HashSet<int>(transferHubIds);
 
-                foreach (var segment in dbSegments)
+                foreach (var edge in edges)
                 {
-                    if (!newGraph.ContainsKey(segment.OriginStopId))
-                        newGraph[segment.OriginStopId] = new List<RouteSegment>();
+                    if (!newGraph.ContainsKey(edge.OriginStopId))
+                        newGraph[edge.OriginStopId] = new List<GraphEdge>();
 
-                    newGraph[segment.OriginStopId].Add(segment);
+                    newGraph[edge.OriginStopId].Add(edge);
                 }
 
                 // Atomic swaps - completely thread safe
@@ -65,8 +70,8 @@
                 var bestTimes = new Dictionary<(int stop, int route), int>();
                 var pq = new PriorityQueue<SearchState, int>();
 
-                // Tracks (CurrentStop, CurrentRoute) -> (PreviousStop, PreviousRoute, SegmentUsed)
-                var cameFrom = new Dictionary<(int stop, int route), ((int stop, int route) prevState, RouteSegment segment)>();
+                // Tracks (CurrentStop, CurrentRoute) -> (PreviousStop, PreviousRoute, EdgeUsed)
+                var cameFrom = new Dictionary<(int stop, int route), ((int stop, int route) prevState, GraphEdge edge)>();
 
                 // -1 represents the state before boarding any bus
                 pq.Enqueue(new SearchState(startStopId, -1, 0), 0);
@@ -90,14 +95,12 @@
                         continue;
 
                     // Evaluate all outbound segments from the current stop
-                    if (_graph.TryGetValue(currentState.StopId, out var outboundSegments))
+                    if (_graph.TryGetValue(currentState.StopId, out var outboundEdges))
                     {
-                        foreach (var segment in outboundSegments)
+                        foreach (var edge in outboundEdges)
                         {
-                            //int costToNextStop = segment.TravelTimeMinutes;
-
                             bool isChangingBuses = currentState.CurrentRouteId != -1 &&
-                                                   currentState.CurrentRouteId != segment.RouteId;
+                                                   currentState.CurrentRouteId != edge.RouteId;
 
                             // STRICT RULE: Only allow transfers at designated hubs
                             // Fail fast: If it requires a bus change but we aren't at a hub, skip immediately.
@@ -105,18 +108,19 @@
                             {
                                 continue; // Illegal move, abandon this path
                             }
-                            int costToNextStop = segment.TravelTimeMinutes + (isChangingBuses ? TransferPenaltyMinutes : 0);
+
+                            int costToNextStop = edge.TravelTimeMinutes + (isChangingBuses ? TransferPenaltyMinutes : 0);
 
                             int newTotalTime = currentTime + costToNextStop;
-                            var nextStateKey = (segment.DestinationStopId, segment.RouteId);
+                            var nextStateKey = (edge.DestinationStopId, edge.RouteId);
                             var currentStateKey = (currentState.StopId, currentState.CurrentRouteId);
 
                             // If this path to the next stop is faster, record it and queue it
                             if (newTotalTime < bestTimes.GetValueOrDefault(nextStateKey, int.MaxValue))
                             {
                                 bestTimes[nextStateKey] = newTotalTime;
-                                cameFrom[nextStateKey] = (currentStateKey, segment);
-                                pq.Enqueue(new SearchState(segment.DestinationStopId, segment.RouteId, newTotalTime), newTotalTime);
+                                cameFrom[nextStateKey] = (currentStateKey, edge);
+                                pq.Enqueue(new SearchState(edge.DestinationStopId, edge.RouteId, newTotalTime), newTotalTime);
                             }
                         }
                     }
@@ -124,7 +128,6 @@
 
                 if (finalState == null)
                 {
-                    // throw new Exception($"No valid route found between stop {startStopId} and {targetStopId}.");
                     return new RoutingResult(-1, new List<JourneyLeg>()); // Indicate no route found
                 }
 
@@ -135,55 +138,63 @@
             /// Backtracks through the cameFrom dictionary to build the continuous journey legs.
             /// </summary>
             private RoutingResult ReconstructPath(
-                Dictionary<(int stop, int route), ((int stop, int route) prevState, RouteSegment segment)> cameFrom,
+                Dictionary<(int stop, int route), ((int stop, int route) prevState, GraphEdge edge)> cameFrom,
                 (int stop, int route) targetState,
                 int totalTime)
             {
-                var pathSegments = new List<RouteSegment>();
+                var pathEdges = new List<GraphEdge>();
                 var currentState = targetState;
 
                 // Backtrack from destination to origin
                 while (cameFrom.ContainsKey(currentState))
                 {
                     var transitData = cameFrom[currentState];
-                    pathSegments.Add(transitData.segment);
+                    pathEdges.Add(transitData.edge);
                     currentState = transitData.prevState;
                 }
 
                 // Reverse to get chronological order (Start -> Target)
-                pathSegments.Reverse();
+                pathEdges.Reverse();
 
                 var journeyLegs = new List<JourneyLeg>();
-                if (pathSegments.Count == 0) return new RoutingResult(totalTime, journeyLegs);
+                if (pathEdges.Count == 0) return new RoutingResult(totalTime, journeyLegs);
 
                 var currentLeg = new JourneyLeg
                 {
-                    RouteId = pathSegments[0].RouteId,
-                    StartStopId = pathSegments[0].OriginStopId,
-                    EndStopId = pathSegments[0].DestinationStopId,
-                    LegDurationMinutes = pathSegments[0].TravelTimeMinutes
+                    RouteId = pathEdges[0].RouteId,
+                    StartStopId = pathEdges[0].OriginStopId,
+                    EndStopId = pathEdges[0].DestinationStopId,
+                    LegDurationMinutes = pathEdges[0].TravelTimeMinutes,
+
+                    // Apply the flat fare once when they board this route
+                    LegFare = pathEdges[0].RouteBaseFare
                 };
 
-                for (int i = 1; i < pathSegments.Count; i++)
+                for (int i = 1; i < pathEdges.Count; i++)
                 {
-                    var segment = pathSegments[i];
+                    var edge = pathEdges[i];
 
-                    if (segment.RouteId == currentLeg.RouteId)
+                    if (edge.RouteId == currentLeg.RouteId)
                     {
-                        // Extend the current leg along the same route
-                        currentLeg.EndStopId = segment.DestinationStopId;
-                        currentLeg.LegDurationMinutes += segment.TravelTimeMinutes;
+                        // STAYING ON THE SAME BUS
+                        currentLeg.EndStopId = edge.DestinationStopId;
+                        currentLeg.LegDurationMinutes += edge.TravelTimeMinutes;
+
+                        // Notice we DO NOT add to LegFare here anymore!
                     }
                     else
                     {
-                        // Bus change occurred: save current leg and start a new one
+                        // CHANGING BUSES
                         journeyLegs.Add(currentLeg);
                         currentLeg = new JourneyLeg
                         {
-                            RouteId = segment.RouteId,
-                            StartStopId = segment.OriginStopId,
-                            EndStopId = segment.DestinationStopId,
-                            LegDurationMinutes = segment.TravelTimeMinutes
+                            RouteId = edge.RouteId,
+                            StartStopId = edge.OriginStopId,
+                            EndStopId = edge.DestinationStopId,
+                            LegDurationMinutes = edge.TravelTimeMinutes,
+
+                            // Apply the new flat fare for boarding the new route
+                            LegFare = edge.RouteBaseFare
                         };
                     }
                 }

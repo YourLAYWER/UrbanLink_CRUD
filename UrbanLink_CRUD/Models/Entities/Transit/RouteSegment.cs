@@ -13,9 +13,6 @@
 
         public int TravelTimeMinutes { get; set; }
 
-        // Added based on our code review so the algorithm can calculate prices!
-        public decimal Fare { get; set; }
-
         // Navigation Properties
         public virtual Stop? OriginStop { get; set; }
         public virtual Stop? DestinationStop { get; set; }

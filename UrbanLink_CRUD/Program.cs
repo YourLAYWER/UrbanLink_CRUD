@@ -5,6 +5,7 @@ using Microsoft.OpenApi;
 using System.Text;
 using System.Text.Json.Serialization;
 using UrbanLink_CRUD.Models.Data;
+using static UrbanLink_CRUD.Services.Routing_Logic.TransitSystemService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -74,7 +75,44 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContext<ULDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
 
+// --- REGISTERING THE SERVICE ---
+builder.Services.AddSingleton<TransitRoutingService>();
+
 var app = builder.Build();
+
+// --- INITIALIZING THE GRAPH ON STARTUP ---
+// We create a temporary scope just to fetch the initial data from SQL Server
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ULDBContext>();
+        var routingService = services.GetRequiredService<TransitRoutingService>();
+
+        // 1. Fetch from DB and immediately map to the lightweight algorithm record
+        var graphEdges = context.RouteSegments
+        .Select(dbSegment => new GraphEdge(
+            dbSegment.OriginStopId,
+            dbSegment.DestinationStopId,
+            dbSegment.RouteId,
+            dbSegment.TravelTimeMinutes,
+            dbSegment.Route.BaseFare // Pulls the flat rate directly from the Route table
+        ))
+        .ToList();
+        var hubIds = context.Stops
+            .Where(s => s.IsTransferHub)
+            .Select(s => s.Id)
+            .ToList();
+
+        // 2. Feed the safe records into the Singleton engine
+        routingService.InitializeGraph(graphEdges, hubIds);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"An error occurred initializing the transit graph: {ex.Message}");
+    }
+}
 
 // --- THIS BLOCK RUNS THE SEEDER ---
 using (var scope = app.Services.CreateScope())
