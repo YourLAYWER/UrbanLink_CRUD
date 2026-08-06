@@ -101,5 +101,11 @@ namespace UrbanLink_CRUD.Models.Data
                 .OnDelete(DeleteBehavior.Restrict);
         }
 
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Entities.Transit.RouteStop>()
+        .HasKey(rs => new { rs.SegmentID, rs.StopID });
+}
+
     }
 }

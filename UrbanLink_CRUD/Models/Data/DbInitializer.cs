@@ -31,6 +31,18 @@ namespace UrbanLink_CRUD.Models.Data
             }
         }
 
+         public static void SeedTransitProviders(ULDBContext context)
+        {
+            if (!context.TransitProviders.Any())
+            {
+                context.TransitProviders.AddRange(
+                    new TransitProvider { Name = "Algoa Bus", Type = "Bus", APIEndpoint = "" },
+                    new TransitProvider { Name = "PRASA", Type = "Rail", APIEndpoint = "" },
+                    new TransitProvider { Name = "Gqeberha Municipal Bus", Type = "Bus", APIEndpoint = "" }
+                );
+                context.SaveChanges();
+            }
+        }
         public static void SeedTransitSystem(ULDBContext context)
         {
             // 1. Exit if the database already has data

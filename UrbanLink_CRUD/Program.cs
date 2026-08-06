@@ -296,6 +296,7 @@ using (var scope = app.Services.CreateScope())
 
         // Call your seeding method
         DbInitializer.SeedAdminUser(context);
+        DbInitializer.SeedTransitProviders(context);
         DbInitializer.SeedTransitSystem(context); // Call the new seeding method for transit data
     }
     catch (Exception ex)
