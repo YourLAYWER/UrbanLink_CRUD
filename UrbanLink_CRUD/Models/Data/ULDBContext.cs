@@ -26,5 +26,11 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<Order> Orders { get; set; } = null!;
         public DbSet<Entities.Notification> Notifications { get; set; } = null!;
 
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Entities.Transit.RouteStop>()
+        .HasKey(rs => new { rs.SegmentID, rs.StopID });
+}
+
     }
 }

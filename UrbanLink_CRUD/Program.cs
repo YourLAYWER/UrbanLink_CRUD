@@ -89,6 +89,7 @@ using (var scope = app.Services.CreateScope())
 
         // Call your seeding method
         DbInitializer.SeedAdminUser(context);
+        DbInitializer.SeedTransitProviders(context);
     }
     catch (Exception ex)
     {

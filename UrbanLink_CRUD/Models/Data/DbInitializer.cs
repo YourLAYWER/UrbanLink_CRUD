@@ -1,5 +1,6 @@
 ﻿using BCrypt.Net;
 using UrbanLink_CRUD.Models.Entities;
+using UrbanLink_CRUD.Models.Entities.Transit;
 
 namespace UrbanLink_CRUD.Models.Data
 {
@@ -26,6 +27,19 @@ namespace UrbanLink_CRUD.Models.Data
 
                 // 4. Save to the database
                 context.Users.Add(adminUser);
+                context.SaveChanges();
+            }
+        }
+
+         public static void SeedTransitProviders(ULDBContext context)
+        {
+            if (!context.TransitProviders.Any())
+            {
+                context.TransitProviders.AddRange(
+                    new TransitProvider { Name = "Algoa Bus", Type = "Bus", APIEndpoint = "" },
+                    new TransitProvider { Name = "PRASA", Type = "Rail", APIEndpoint = "" },
+                    new TransitProvider { Name = "Gqeberha Municipal Bus", Type = "Bus", APIEndpoint = "" }
+                );
                 context.SaveChanges();
             }
         }
