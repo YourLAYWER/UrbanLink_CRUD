@@ -144,6 +144,23 @@ namespace UrbanLink_CRUD.Models.Data
 
             context.RouteSegments.AddRange(segments);
             context.SaveChanges();
+            var routeStops = new RouteStop[]
+            {
+                // Route 1 sequence
+                new RouteStop { SegmentId = segments[0].Id, StopId = stops[0].Id, StopSequence = 1 },
+                new RouteStop { SegmentId = segments[0].Id, StopId = stops[1].Id, StopSequence = 2 },
+                new RouteStop { SegmentId = segments[1].Id, StopId = stops[2].Id, StopSequence = 3 },
+                new RouteStop { SegmentId = segments[2].Id, StopId = stops[3].Id, StopSequence = 4 },
+
+                // Route 2 sequence
+                new RouteStop { SegmentId = segments[3].Id, StopId = stops[3].Id, StopSequence = 1 },
+                new RouteStop { SegmentId = segments[3].Id, StopId = stops[4].Id, StopSequence = 2 },
+                new RouteStop { SegmentId = segments[4].Id, StopId = stops[5].Id, StopSequence = 3 },
+                new RouteStop { SegmentId = segments[5].Id, StopId = stops[6].Id, StopSequence = 4 }
+            };
+
+            context.RouteStops.AddRange(routeStops);
+            context.SaveChanges();
         }
 
     }

@@ -375,10 +375,15 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<int>("StopId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("RouteSegmentId")
+                        .HasColumnType("int");
+
                     b.Property<int>("StopSequence")
                         .HasColumnType("int");
 
                     b.HasKey("SegmentId", "StopId");
+
+                    b.HasIndex("RouteSegmentId");
 
                     b.HasIndex("StopId");
 
@@ -705,6 +710,10 @@ namespace UrbanLink_CRUD.Migrations
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteStop", b =>
                 {
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.RouteSegment", null)
+                        .WithMany("RouteStops")
+                        .HasForeignKey("RouteSegmentId");
+
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.RouteSegment", "RouteSegment")
                         .WithMany()
                         .HasForeignKey("SegmentId")
@@ -755,6 +764,11 @@ namespace UrbanLink_CRUD.Migrations
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Journey", b =>
                 {
                     b.Navigation("Legs");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteSegment", b =>
+                {
+                    b.Navigation("RouteStops");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Stop", b =>

@@ -17,5 +17,7 @@
         public virtual Stop? OriginStop { get; set; }
         public virtual Stop? DestinationStop { get; set; }
         public virtual TransitRoute? Route { get; set; }
+        //Connects RouteSegment to the RouteStop join table
+        public virtual ICollection<RouteStop> RouteStops { get; set; } = new List<RouteStop>();
     }
 }

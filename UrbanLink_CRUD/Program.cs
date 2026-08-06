@@ -254,6 +254,10 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ULDBContext>();
+        // 1. SEED TRANSIT TABLES FIRST (Stops, Segments, RouteStops)
+        DbInitializer.SeedAdminUser(context);
+        DbInitializer.SeedTransitProviders(context);
+        DbInitializer.SeedTransitSystem(context);
 
         // 3. Updated service resolution to use the Interface
         var routingService = services.GetRequiredService<ITransitRoutingService>();
