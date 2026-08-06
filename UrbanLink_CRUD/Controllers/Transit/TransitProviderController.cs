@@ -35,18 +35,18 @@ namespace UrbanLink_CRUD.Controllers.Transit
         {
             _context.TransitProviders.Add(provider);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetTransitProvider), new { id = provider.ID }, provider);
+            return CreatedAtAction(nameof(GetTransitProvider), new { id = provider.Id }, provider);
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateTransitProvider(int id, TransitProvider provider)
         {
-            if (id != provider.ID) return BadRequest(new { message = "ID in URL does not match ID in request body." });
+           if (id != provider.Id) return BadRequest(new { message = "ID in URL does not match ID in request body." });
             _context.Entry(provider).State = EntityState.Modified;
             try { await _context.SaveChangesAsync(); }
             catch (DbUpdateConcurrencyException)
             {
-                if (!_context.TransitProviders.Any(p => p.ID == id)) return NotFound();
+               if (!_context.TransitProviders.Any(p => p.Id == id)) return NotFound();
                 throw;
             }
             return NoContent();
