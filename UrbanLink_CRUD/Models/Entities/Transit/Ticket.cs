@@ -5,7 +5,7 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
     public class Ticket
     {
         // Primary Key
-        public int TicketID { get; set; }
+        public int TicketId { get; set; }
 
         public string QRCodeData { get; set; } = string.Empty;
 

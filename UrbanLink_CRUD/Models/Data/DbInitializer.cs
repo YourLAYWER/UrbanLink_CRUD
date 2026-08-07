@@ -1,5 +1,6 @@
 ﻿using BCrypt.Net;
 using UrbanLink_CRUD.Models.Entities;
+using UrbanLink_CRUD.Models.Entities.Transit;
 
 namespace UrbanLink_CRUD.Models.Data
 {
@@ -29,6 +30,139 @@ namespace UrbanLink_CRUD.Models.Data
                 context.SaveChanges();
             }
         }
+
+         public static void SeedTransitProviders(ULDBContext context)
+        {
+            if (!context.TransitProviders.Any())
+            {
+                context.TransitProviders.AddRange(
+                    new TransitProvider { Name = "Algoa Bus", Type = "Bus", APIEndpoint = "" },
+                    new TransitProvider { Name = "PRASA", Type = "Rail", APIEndpoint = "" },
+                    new TransitProvider { Name = "Gqeberha Municipal Bus", Type = "Bus", APIEndpoint = "" }
+                );
+                context.SaveChanges();
+            }
+        }
+        public static void SeedTransitSystem(ULDBContext context)
+        {
+            // 1. Exit if the database already has data
+            if (context.Stops.Any())
+            {
+                return;
+            }
+
+            // 2. Create the exact Stops requested
+            // Note: Gqeberha Central is flagged as a Transfer Hub to allow connecting Route 1 and Route 2
+            var stops = new Stop[]
+            {
+                new Stop { Name = "Greenacres Shopping Centre", Latitude = -33.9450, Longitude = 25.5720, IsTransferHub = true, IsActive = true },
+                new Stop { Name = "SABS", Latitude = -33.9500, Longitude = 25.5900, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "BP", Latitude = -33.9550, Longitude = 25.6000, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Gqeberha Central Station", Latitude = -33.9608, Longitude = 25.6222, IsTransferHub = true, IsActive = true },
+                new Stop { Name = "KingsBeach", Latitude = -33.9750, Longitude = 25.6450, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Boardwalk", Latitude = -33.9825, Longitude = 25.6580, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "NMU South Campus", Latitude = -34.0084, Longitude = 25.6698, IsTransferHub = false, IsActive = true }
+            };
+
+            context.Stops.AddRange(stops);
+            context.SaveChanges(); // Generates Stop IDs
+
+            // 3. Create the Transit Provider
+            var provider = new TransitProvider
+            {
+                Name = "Nelson Mandela Bay Municipality Transit",
+                Type = "Bus",
+                APIEndpoint = "https://api.urbanlink.co.za/v1/municipal"
+            };
+
+            context.TransitProviders.Add(provider);
+            context.SaveChanges(); // Generates Provider ID
+
+            // 4. Create the two Transit Routes
+            var routes = new TransitRoute[]
+            {
+                new TransitRoute
+                {
+                    RouteName = "Route 1: Greenacres to Central",
+                    TransportType = "Bus",
+                    BaseFare = 15.00m,
+                    ProviderId = provider.Id
+                },
+                new TransitRoute
+                {
+                    RouteName = "Route 2: Central to NMU South",
+                    TransportType = "Bus",
+                    BaseFare = 15.00m,
+                    ProviderId = provider.Id
+                }
+            };
+
+            context.TransitRoutes.AddRange(routes);
+            context.SaveChanges(); // Generates Route IDs
+
+            // 5. Connect the Stops with Route Segments to build the directed graph
+            // I've added dummy travel times (minutes) and leg fares for the algorithm to calculate
+            var segments = new RouteSegment[]
+            {
+                // ==========================================
+                // ROUTE 1: Greenacres -> SABS -> BP -> Central
+                // ==========================================
+                new RouteSegment {
+                    OriginStopId = stops[0].Id, DestinationStopId = stops[1].Id, RouteId = routes[0].Id,
+                    TravelTimeMinutes = 5
+                }, // Greenacres -> SABS
+                
+                new RouteSegment {
+                    OriginStopId = stops[1].Id, DestinationStopId = stops[2].Id, RouteId = routes[0].Id,
+                    TravelTimeMinutes = 5
+                }, // SABS -> BP
+                
+                new RouteSegment {
+                    OriginStopId = stops[2].Id, DestinationStopId = stops[3].Id, RouteId = routes[0].Id,
+                    TravelTimeMinutes = 8
+                }, // BP -> Central
+
+
+                // ==========================================
+                // ROUTE 2: Central -> KingsBeach -> Boardwalk -> NMU
+                // ==========================================
+                new RouteSegment {
+                    OriginStopId = stops[3].Id, DestinationStopId = stops[4].Id, RouteId = routes[1].Id,
+                    TravelTimeMinutes = 7
+                }, // Central -> KingsBeach
+                
+                new RouteSegment {
+                    OriginStopId = stops[4].Id, DestinationStopId = stops[5].Id, RouteId = routes[1].Id,
+                    TravelTimeMinutes = 5
+                }, // KingsBeach -> Boardwalk
+                
+                new RouteSegment {
+                    OriginStopId = stops[5].Id, DestinationStopId = stops[6].Id, RouteId = routes[1].Id,
+                    TravelTimeMinutes = 10
+                }  // Boardwalk -> NMU
+            };
+
+            context.RouteSegments.AddRange(segments);
+            context.SaveChanges();
+            var routeStops = new RouteStop[]
+            {
+                // Route 1 sequence
+                new RouteStop { SegmentId = segments[0].Id, StopId = stops[0].Id, StopSequence = 1 },
+                new RouteStop { SegmentId = segments[0].Id, StopId = stops[1].Id, StopSequence = 2 },
+                new RouteStop { SegmentId = segments[1].Id, StopId = stops[2].Id, StopSequence = 3 },
+                new RouteStop { SegmentId = segments[2].Id, StopId = stops[3].Id, StopSequence = 4 },
+
+                // Route 2 sequence
+                new RouteStop { SegmentId = segments[3].Id, StopId = stops[3].Id, StopSequence = 1 },
+                new RouteStop { SegmentId = segments[3].Id, StopId = stops[4].Id, StopSequence = 2 },
+                new RouteStop { SegmentId = segments[4].Id, StopId = stops[5].Id, StopSequence = 3 },
+                new RouteStop { SegmentId = segments[5].Id, StopId = stops[6].Id, StopSequence = 4 }
+            };
+
+            context.RouteStops.AddRange(routeStops);
+            context.SaveChanges();
+        }
+
     }
 
 }

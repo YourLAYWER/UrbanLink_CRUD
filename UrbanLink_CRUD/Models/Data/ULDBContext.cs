@@ -17,7 +17,7 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<Entities.Transit.Journey> Journeys { get; set; } = null!;
         public DbSet<Entities.Transit.RouteSegment> RouteSegments { get; set; } = null!;
         public DbSet<Entities.Transit.TransitProvider> TransitProviders { get; set; } = null!;
-
+        public DbSet<Entities.Transit.TransitRoute> TransitRoutes { get; set; } = null!;
 
         public DbSet<Entities.Transit.RouteStop> RouteStops { get; set; } = null!;
         public DbSet<Entities.Transit.JourneyLeg> JourneyLegs { get; set; } = null!;
@@ -36,5 +36,69 @@ namespace UrbanLink_CRUD.Models.Data
 
         public DbSet<CartItem> CartItems { get; set; } = null!;
 
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Disable cascade delete for Boarding Stop to prevent multiple cascade paths
+            modelBuilder.Entity<Entities.Transit.JourneyLeg>()
+                .HasOne(jl => jl.BoardingStop)
+                .WithMany()
+                .HasForeignKey(jl => jl.BoardingStopId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Disable cascade delete for Destination Stop to prevent multiple cascade paths
+            modelBuilder.Entity<Entities.Transit.JourneyLeg>()
+                .HasOne(jl => jl.DestinationStop)
+                .WithMany()
+                .HasForeignKey(jl => jl.DestinationStopId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ----------------------------------------------------
+            // JOURNEY: Disable cascade deletes
+            // ----------------------------------------------------
+            modelBuilder.Entity<Entities.Transit.Journey>()
+                .HasOne(j => j.StartStop)
+                .WithMany()
+                .HasForeignKey(j => j.StartStopId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Entities.Transit.Journey>()
+                .HasOne(j => j.EndStop)
+                .WithMany()
+                .HasForeignKey(j => j.EndStopId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ----------------------------------------------------
+            // ROUTE SEGMENT: Disable cascade deletes
+            // ----------------------------------------------------
+            modelBuilder.Entity<Entities.Transit.RouteSegment>()
+                .HasOne(rs => rs.OriginStop)
+                .WithMany()
+                .HasForeignKey(rs => rs.OriginStopId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Entities.Transit.RouteSegment>()
+                .HasOne(rs => rs.DestinationStop)
+                .WithMany()
+                .HasForeignKey(rs => rs.DestinationStopId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ----------------------------------------------------
+            // ROUTE STOP: Disable cascade deletes to prevent cycles
+            // ----------------------------------------------------
+            modelBuilder.Entity<Entities.Transit.RouteStop>()
+                .HasOne(rs => rs.Stop)
+                .WithMany(s => s.RouteStops) // Maps to the collection in the Stop class
+                .HasForeignKey(rs => rs.StopId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+          modelBuilder.Entity<Entities.Transit.RouteStop>()
+                .HasOne(rs => rs.RouteSegment)
+                .WithMany()
+                .HasForeignKey(rs => rs.SegmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }
