@@ -552,6 +552,7 @@ namespace UrbanLink_CRUD.Migrations
                     b.Navigation("Retailer");
                 });
 
+
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Notification", b =>
                 {
                     b.HasOne("UrbanLink_CRUD.Models.Entities.User", "User")
