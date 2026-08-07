@@ -94,7 +94,7 @@ namespace UrbanLink_CRUD.Models.Data
                 .HasForeignKey(rs => rs.StopId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<Entities.Transit.RouteStop>()
+          modelBuilder.Entity<Entities.Transit.RouteStop>()
                 .HasOne(rs => rs.RouteSegment)
                 .WithMany()
                 .HasForeignKey(rs => rs.SegmentId)
@@ -103,6 +103,5 @@ namespace UrbanLink_CRUD.Models.Data
             modelBuilder.Entity<Entities.Transit.TransitRoute>()
             .ToTable("TransitRoute");
         }
-
     }
 }
