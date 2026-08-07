@@ -47,6 +47,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
+            // 1. Verify that both the Route Segment and the Stop actually exist in the database
             var segmentExists = await _context.RouteSegments.AnyAsync(s => s.Id == routeStop.SegmentId);
             var stopExists = await _context.Stops.AnyAsync(s => s.Id == routeStop.StopId);
 
@@ -55,6 +56,24 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 return BadRequest(new { message = "Invalid SegmentId or StopId provided." });
             }
 
+            // 2. Prevent duplicate entries for the composite primary key
+            var duplicateExists = await _context.RouteStops
+                .AnyAsync(rs => rs.SegmentId == routeStop.SegmentId && rs.StopId == routeStop.StopId);
+
+            if (duplicateExists)
+            {
+                return BadRequest(new { message = "This stop has already been added to this route segment." });
+            }
+
+            // 3.Count existing stops for this segment and calculate the next sequence number
+            int currentStopCount = await _context.RouteStops
+                .Where(rs => rs.SegmentId == routeStop.SegmentId)
+                .CountAsync();
+
+            // If count is 0, sequence becomes 1. If count is 2, sequence becomes 3.
+            routeStop.StopSequence = currentStopCount + 1;
+
+            // 4. Save the fully populated record to the database
             _context.RouteStops.Add(routeStop);
             await _context.SaveChangesAsync();
 
