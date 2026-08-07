@@ -7,5 +7,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
     [ApiController]
     public class JourneyController : ControllerBase
     {
+
     }
 }

@@ -339,9 +339,6 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<int>("DestinationStopId")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("Fare")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<int>("OriginStopId")
                         .HasColumnType("int");
 
@@ -467,6 +464,9 @@ namespace UrbanLink_CRUD.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<decimal>("BaseFare")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("ProviderId")
                         .HasColumnType("int");
 
@@ -482,7 +482,7 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.HasIndex("ProviderId");
 
-                    b.ToTable("TransitRoute");
+                    b.ToTable("TransitRoute", (string)null);
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.User", b =>

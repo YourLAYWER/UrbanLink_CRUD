@@ -1,5 +1,7 @@
 ﻿using BCrypt.Net;
 using UrbanLink_CRUD.Models.Entities;
+using UrbanLink_CRUD.Models.Entities.Transit;
+using UrbanLink_CRUD.Models.Enums;
 
 namespace UrbanLink_CRUD.Models.Data
 {
@@ -29,6 +31,26 @@ namespace UrbanLink_CRUD.Models.Data
                 context.SaveChanges();
             }
         }
-    }
 
+        public static void SeedTickets(ULDBContext context)
+        {
+            if (!context.Tickets.Any())
+            {
+                context.Tickets.AddRange(
+                    new Ticket
+                    {
+                        QRCodeData = "QR-1001",
+                        Status = TicketStatus.Active
+                    },
+                    new Ticket
+                    {
+                        QRCodeData = "QR-1002",
+                        Status = TicketStatus.Active
+                    }
+                );
+
+                context.SaveChanges();
+            }
+        }
+    }
 }

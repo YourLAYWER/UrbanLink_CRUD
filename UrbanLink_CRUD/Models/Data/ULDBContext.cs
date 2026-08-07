@@ -17,7 +17,7 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<Entities.Transit.Journey> Journeys { get; set; } = null!;
         public DbSet<Entities.Transit.RouteSegment> RouteSegments { get; set; } = null!;
         public DbSet<Entities.Transit.TransitProvider> TransitProviders { get; set; } = null!;
-
+        public DbSet<Entities.Transit.TransitRoute> TransitRoutes { get; set; } = null!;
 
         public DbSet<Entities.Transit.RouteStop> RouteStops { get; set; } = null!;
         public DbSet<Entities.Transit.JourneyLeg> JourneyLegs { get; set; } = null!;
@@ -99,6 +99,9 @@ namespace UrbanLink_CRUD.Models.Data
                 .WithMany()
                 .HasForeignKey(rs => rs.SegmentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Entities.Transit.TransitRoute>()
+            .ToTable("TransitRoute");
         }
 
     }

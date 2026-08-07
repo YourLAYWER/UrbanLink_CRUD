@@ -127,6 +127,7 @@ using (var scope = app.Services.CreateScope())
 
         // Call your seeding method
         DbInitializer.SeedAdminUser(context);
+        DbInitializer.SeedTickets(context);
     }
     catch (Exception ex)
     {
