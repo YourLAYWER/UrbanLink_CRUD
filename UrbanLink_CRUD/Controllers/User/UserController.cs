@@ -32,7 +32,7 @@ namespace UrbanLink_CRUD.Controllers.Users
 
         // GET: api/user/me
         //Gets the specific user details through the jwt credentials
-        [HttpGet("api/user/me")]
+        [HttpGet("me")]
         [Authorize] // This ensures only users with a valid JWT can access this
         public IActionResult GetUserProfile()
         {
@@ -57,7 +57,7 @@ namespace UrbanLink_CRUD.Controllers.Users
 
 
         // GET: api/user/5
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<ActionResult<object>> GetUser(int id)
         {
             var user = await _context.Users.FindAsync(id);
