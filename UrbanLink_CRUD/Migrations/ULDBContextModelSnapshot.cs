@@ -490,11 +490,7 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.HasIndex("ProviderId");
 
-
                     b.ToTable("TransitRoute", (string)null);
-
-                    b.ToTable("TransitRoutes");
-
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.User", b =>
@@ -607,7 +603,6 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.Navigation("Retailer");
                 });
-
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Notification", b =>
                 {

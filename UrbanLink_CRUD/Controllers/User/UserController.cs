@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using UrbanLink_CRUD.Models.Data;
 using UrbanLink_CRUD.Models.Entities;
 
@@ -27,6 +29,32 @@ namespace UrbanLink_CRUD.Controllers.Users
                 .Select(u => new { u.Id, u.Name, u.Email, u.CommuterProfile, u.CreatedAt })
                 .ToListAsync();
         }
+
+        // GET: api/user/me
+        //Gets the specific user details through the jwt credentials
+        [HttpGet("api/user/me")]
+        [Authorize] // This ensures only users with a valid JWT can access this
+        public IActionResult GetUserProfile()
+        {
+            // 1. Extract the User ID securely from the JWT token
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdString == null) return Unauthorized();
+
+            int userId = int.Parse(userIdString);
+
+            // 2. Fetch the user from the database
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            if (user == null) return NotFound(new { message = "User not found" });
+
+            // 3. Return the profile data
+            return Ok(new
+            {
+                fullName = user.Name,
+                email = user.Email
+                // You can easily add more fields here later, like WalletBalance or Role
+            });
+        }
+
 
         // GET: api/user/5
         [HttpGet("{id}")]

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace UrbanLink_CRUD.Migrations
 {
     /// <inheritdoc />
-    public partial class initialmigration : Migration
+    public partial class Initialcreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -126,7 +126,7 @@ namespace UrbanLink_CRUD.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "TransitRoutes",
+                name: "TransitRoute",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -138,9 +138,9 @@ namespace UrbanLink_CRUD.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TransitRoutes", x => x.Id);
+                    table.PrimaryKey("PK_TransitRoute", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_TransitRoutes_TransitProviders_ProviderId",
+                        name: "FK_TransitRoute_TransitProviders_ProviderId",
                         column: x => x.ProviderId,
                         principalTable: "TransitProviders",
                         principalColumn: "Id",
@@ -291,9 +291,9 @@ namespace UrbanLink_CRUD.Migrations
                         principalTable: "TransitProviders",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_RouteSegments_TransitRoutes_RouteId",
+                        name: "FK_RouteSegments_TransitRoute_RouteId",
                         column: x => x.RouteId,
-                        principalTable: "TransitRoutes",
+                        principalTable: "TransitRoute",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -364,9 +364,9 @@ namespace UrbanLink_CRUD.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_JourneyLegs_TransitRoutes_RouteId",
+                        name: "FK_JourneyLegs_TransitRoute_RouteId",
                         column: x => x.RouteId,
-                        principalTable: "TransitRoutes",
+                        principalTable: "TransitRoute",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -404,11 +404,17 @@ namespace UrbanLink_CRUD.Migrations
                 {
                     SegmentId = table.Column<int>(type: "int", nullable: false),
                     StopId = table.Column<int>(type: "int", nullable: false),
-                    StopSequence = table.Column<int>(type: "int", nullable: false)
+                    StopSequence = table.Column<int>(type: "int", nullable: false),
+                    RouteSegmentId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_RouteStops", x => new { x.SegmentId, x.StopId });
+                    table.ForeignKey(
+                        name: "FK_RouteStops_RouteSegments_RouteSegmentId",
+                        column: x => x.RouteSegmentId,
+                        principalTable: "RouteSegments",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_RouteStops_RouteSegments_SegmentId",
                         column: x => x.SegmentId,
@@ -524,13 +530,18 @@ namespace UrbanLink_CRUD.Migrations
                 column: "TransitProviderId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_RouteStops_RouteSegmentId",
+                table: "RouteStops",
+                column: "RouteSegmentId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RouteStops_StopId",
                 table: "RouteStops",
                 column: "StopId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TransitRoutes_ProviderId",
-                table: "TransitRoutes",
+                name: "IX_TransitRoute_ProviderId",
+                table: "TransitRoute",
                 column: "ProviderId");
         }
 
@@ -583,7 +594,7 @@ namespace UrbanLink_CRUD.Migrations
                 name: "Stops");
 
             migrationBuilder.DropTable(
-                name: "TransitRoutes");
+                name: "TransitRoute");
 
             migrationBuilder.DropTable(
                 name: "TransitProviders");
