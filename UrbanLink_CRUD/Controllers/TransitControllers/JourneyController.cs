@@ -126,7 +126,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 // 2. Explicitly referenced the EF Core Entity namespace to prevent compiler confusion
                 Legs = new List<UrbanLink_CRUD.Models.Entities.Transit.JourneyLeg>()
             };
-
             // Map your algorithm's output to the EF Core Database Entities
             int sequence = 1;
             foreach (var algLeg in routingResult.Legs)
@@ -154,6 +153,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             {
                 message = "Journey booked successfully.",
                 journeyId = journey.Id,
+                ticketReference = journey.TicketReference,
                 totalCost = journey.TotalCost,
                 estimatedDurationMinutes = journey.TotalDurationMinutes
             });
