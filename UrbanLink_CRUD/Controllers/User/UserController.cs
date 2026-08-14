@@ -49,8 +49,9 @@ namespace UrbanLink_CRUD.Controllers.Users
             // 3. Return the profile data
             return Ok(new
             {
-                fullName = user.Name,
-                email = user.Email
+                Name = user.Name,
+                email = user.Email,
+                commuterProfile = user.CommuterProfile
                 // You can easily add more fields here later, like WalletBalance or Role
             });
         }
