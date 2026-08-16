@@ -28,5 +28,5 @@ UrbanLink is a robust, time-aware transit routing API built to service the Nelso
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/yourusername/UrbanLink-API.git](https://github.com/yourusername/UrbanLink-API.git)
+   git clone [https://github.com/YourLAWYER/UrbanLink-API.git](https://github.com/yourusername/UrbanLink-API.git)
    cd UrbanLink-API
