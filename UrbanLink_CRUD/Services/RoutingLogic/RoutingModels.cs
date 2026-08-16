@@ -1,6 +1,7 @@
 ﻿namespace UrbanLink_CRUD.Services.RoutingLogic
 {
-    public record GraphEdge(int OriginStopId, int DestinationStopId, int RouteId, int TravelTimeMinutes, decimal RouteBaseFare);
+    public record GraphEdge(int OriginStopId, int DestinationStopId, int RouteId, int TravelTimeMinutes, decimal RouteBaseFare, TimeSpan FirstDepartureTime,
+        TimeSpan LastDepartureTime, int FrequencyMinutes, int OffsetFromRouteStart);
 
     public record SearchState(int StopId, int CurrentRouteId, int TotalTimeMinutes);
 

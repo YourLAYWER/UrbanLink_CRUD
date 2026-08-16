@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Timers;
 using UrbanLink_CRUD.Models.Data;
 using UrbanLink_CRUD.Models.Dtos.TransitDtos;
 using UrbanLink_CRUD.Models.Entities.Transit;
@@ -29,51 +30,72 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (request.StartStopId == request.EndStopId)
                 return BadRequest(new { message = "Start and destination cannot be the same." });
 
-            // 1. Run your fantastic routing engine
-            var routingResult = _routingService.ComputeFastestRoute(request.StartStopId, request.EndStopId);
+            // 1. Get the current time of day for the user
+            var currentDateTime = DateTime.Now;
+            TimeSpan departureTime = currentDateTime.TimeOfDay;
+
+            // 2. Run your fantastic routing engine
+            var routingResult = _routingService.ComputeFastestRoute(request.StartStopId, request.EndStopId, departureTime);
 
             // -1 indicates no path was found
             if (routingResult.TotalTimeMinutes == -1 || !routingResult.Legs.Any())
                 return NotFound(new { message = "No valid route found between these stops." });
 
-            // 2. Tally up the total base cost from all the legs
+            // 3. Tally up the total base cost from all the legs
             decimal totalBaseCost = routingResult.Legs.Sum(leg => leg.LegFare);
 
             var responseSegments = new List<RouteSegmentDto>();
 
-            // Start the clock from right now (or a user-selected departure time)
-            DateTime currentRouteTime = DateTime.Now;
+            // ==========================================
+            // BACKWARD MATH LOGIC
+            // ==========================================
+            // A. Calculate the perfect final arrival time (Current Time + Total Dijkstra Cost)
+            var finalArrivalTime = currentDateTime.AddMinutes(routingResult.TotalTimeMinutes);
 
-            // 3. Translate the raw IDs into human-readable data for Android
+            // B. Sum up the physical travel time (time actually spent moving on buses)
+            int physicalTravelTime = routingResult.Legs.Sum(l => l.LegDurationMinutes);
+
+            // C. Calculate transfer penalties (10 mins per transfer based on your algorithm)
+            int totalTransfers = routingResult.Legs.Count - 1;
+            int transferPenalties = totalTransfers > 0 ? (totalTransfers * 10) : 0;
+
+            // D. Work backward to find the EXACT time they step onto the first bus!
+            var currentLegBoardingTime = finalArrivalTime.AddMinutes(-(physicalTravelTime + transferPenalties));
+
+            // 4. Translate the raw IDs into human-readable data for Android
             foreach (var leg in routingResult.Legs)
             {
                 // Fetch the actual names from the database
                 var startStop = await _context.Stops.FindAsync(leg.StartStopId);
                 var routeInfo = await _context.TransitRoutes.FindAsync(leg.RouteId);
 
+                // Calculate when they get off THIS specific bus
+                var legArrivalTime = currentLegBoardingTime.AddMinutes(leg.LegDurationMinutes);
+
                 responseSegments.Add(new RouteSegmentDto
                 {
                     StopId = leg.StartStopId,
                     StopName = startStop?.Name ?? "Unknown Stop",
                     TransitLine = routeInfo?.RouteName ?? "Unknown Route",
-                    ArrivalTime = currentRouteTime.ToString("HH:mm") // Formats as 08:40
+                    // This shows the time they board this specific segment
+                    ArrivalTime = currentLegBoardingTime.ToString("HH:mm")
                 });
 
-                // Add the travel time of this leg to our running clock
-                currentRouteTime = currentRouteTime.AddMinutes(leg.LegDurationMinutes);
+                // Setup the boarding time for the NEXT leg (leg arrival + 10 min transfer penalty)
+                currentLegBoardingTime = legArrivalTime.AddMinutes(10);
             }
 
-            // 4. Add the final destination node to the end of the timeline
+            // 5. Add the final destination node to the end of the timeline
             var finalStop = await _context.Stops.FindAsync(request.EndStopId);
             responseSegments.Add(new RouteSegmentDto
             {
                 StopId = request.EndStopId,
                 StopName = finalStop?.Name ?? "Destination",
                 TransitLine = "Arrive",
-                ArrivalTime = currentRouteTime.ToString("HH:mm")
+                ArrivalTime = finalArrivalTime.ToString("HH:mm") // The exact time they reach the destination!
             });
 
-            // 5. Package it all up for Android!
+            // 6. Package it all up for Android!
             var response = new RouteCalculateResponse
             {
                 BaseCost = totalBaseCost,
@@ -93,8 +115,11 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (userIdString == null) return Unauthorized();
             int userId = int.Parse(userIdString);
 
+            //1.Get the current time of day for the user (e.g., 10:15 AM)
+            TimeSpan departureTime = DateTime.Now.TimeOfDay;
+
             // --- EXECUTING OUR ALGORITHM ---
-            var routingResult = _routingService.ComputeFastestRoute(request.StartStopId, request.EndStopId);
+            var routingResult = _routingService.ComputeFastestRoute(request.StartStopId, request.EndStopId, departureTime);
 
             // Handle the "No Route Found" scenario gracefully
             if (routingResult.TotalTimeMinutes == -1 || routingResult.Legs.Count == 0)

@@ -254,31 +254,69 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ULDBContext>();
-        // 1. SEED TRANSIT TABLES FIRST (Stops, Segments, RouteStops)
+
+        // 1. SEED TRANSIT TABLES FIRST
         DbInitializer.SeedAdminUser(context);
         DbInitializer.SeedTransitProviders(context);
         DbInitializer.SeedTransitSystem(context);
 
-        // 3. Updated service resolution to use the Interface
         var routingService = services.GetRequiredService<ITransitRoutingService>();
 
-        // 1. Fetch from DB and immediately map to the lightweight algorithm record
-        var graphEdges = context.RouteSegments
-            .Select(dbSegment => new GraphEdge(
-                dbSegment.OriginStopId,
-                dbSegment.DestinationStopId,
-                dbSegment.RouteId,
-                dbSegment.TravelTimeMinutes,
-                dbSegment.Route.BaseFare // Pulls the flat rate directly from the Route table
-            ))
+        // 2. Fetch the segments from the database into memory so we can run our offset math
+        // Make sure to Include(s => s.Route) so we have access to the FirstDepartureTime, etc.
+        var dbSegments = context.RouteSegments
+            .Include(s => s.Route)
             .ToList();
 
+        var graphEdges = new List<GraphEdge>();
+
+        // 3. DYNAMIC OFFSET CALCULATION
+        // Group the segments by Route (e.g., all segments for Route 1, then all for Route 2)
+        foreach (var routeGroup in dbSegments.GroupBy(s => s.RouteId))
+        {
+            var routeSegments = routeGroup.ToList();
+
+            // Find the "Start" of the route (the segment where its Origin is NOT the Destination of any other segment)
+            var currentSegment = routeSegments.FirstOrDefault(s =>
+                !routeSegments.Any(other => other.DestinationStopId == s.OriginStopId));
+
+            int currentOffset = 0; // Starts at 0 for the first stop!
+
+            // Trace the route from start to finish
+            while (currentSegment != null)
+            {
+                // Build the updated GraphEdge with all 9 parameters
+                graphEdges.Add(new GraphEdge(
+                    currentSegment.OriginStopId,
+                    currentSegment.DestinationStopId,
+                    currentSegment.RouteId,
+                    currentSegment.TravelTimeMinutes,
+                    currentSegment.Route.BaseFare,
+
+                    // Pass in the schedule from the Route table
+                    currentSegment.Route.FirstDepartureTime,
+                    currentSegment.Route.LastDepartureTime,
+                    currentSegment.Route.FrequencyMinutes,
+
+                    // Inject our dynamically calculated offset!
+                    currentOffset
+                ));
+
+                // Increase the offset by the time it took to travel this segment
+                currentOffset += currentSegment.TravelTimeMinutes;
+
+                // Move to the next segment in the chain (where Origin == Current Destination)
+                currentSegment = routeSegments.FirstOrDefault(s => s.OriginStopId == currentSegment.DestinationStopId);
+            }
+        }
+
+        // 4. Get the hubs
         var hubIds = context.Stops
             .Where(s => s.IsTransferHub)
             .Select(s => s.Id)
             .ToList();
 
-        // 2. Feed the safe records into the Singleton engine
+        // 5. Feed the dynamically mapped records into the Singleton engine
         routingService.InitializeGraph(graphEdges, hubIds);
     }
     catch (Exception ex)

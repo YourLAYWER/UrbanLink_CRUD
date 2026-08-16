@@ -38,7 +38,8 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
         /// <summary>
         /// Computes the fastest path and reconstructs the journey legs for database insertion.
         /// </summary>
-        public RoutingResult ComputeFastestRoute(int startStopId, int targetStopId)
+        // 1. UPDATED SIGNATURE: Added TimeSpan userStartTime
+        public RoutingResult ComputeFastestRoute(int startStopId, int targetStopId, TimeSpan userStartTime)
         {
             var bestTimes = new Dictionary<(int stop, int route), int>();
             var pq = new PriorityQueue<SearchState, int>();
@@ -75,6 +76,9 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
                         bool isChangingBuses = currentState.CurrentRouteId != -1 &&
                                                currentState.CurrentRouteId != edge.RouteId;
 
+                        // NEW: Are we stepping onto a bus for the very first time?
+                        bool isFirstBoarding = currentState.CurrentRouteId == -1;
+
                         // STRICT RULE: Only allow transfers at designated hubs
                         // Fail fast: If it requires a bus change but we aren't at a hub, skip immediately.
                         if (isChangingBuses && !_transferHubs.Contains(currentState.StopId))
@@ -82,7 +86,29 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
                             continue; // Illegal move, abandon this path
                         }
 
-                        int costToNextStop = edge.TravelTimeMinutes + (isChangingBuses ? TransferPenaltyMinutes : 0);
+                        // ==========================================
+                        // NEW TIME-AWARE SCHEDULING LOGIC
+                        // ==========================================
+                        int waitTime = 0;
+
+                        // We only wait if we are getting on a NEW bus. (If we are on the bus already, wait is 0)
+                        if (isFirstBoarding || isChangingBuses)
+                        {
+                            // Calculate the exact time of day the commuter arrives at this stop
+                            TimeSpan userTimeAtThisNode = userStartTime.Add(TimeSpan.FromMinutes(currentTime));
+
+                            waitTime = CalculateWaitTime(userTimeAtThisNode, edge);
+
+                            // If waitTime is massive (9999), they missed the last bus for the day on this route.
+                            if (waitTime >= 9999)
+                            {
+                                continue; // Abandon this path, the bus isn't running anymore!
+                            }
+                        }
+
+                        // Add the dynamic waitTime to the cost equation!
+                        int costToNextStop = edge.TravelTimeMinutes + waitTime + (isChangingBuses ? TransferPenaltyMinutes : 0);
+                        // ==========================================
 
                         int newTotalTime = currentTime + costToNextStop;
                         var nextStateKey = (edge.DestinationStopId, edge.RouteId);
@@ -105,6 +131,36 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
             }
 
             return ReconstructPath(cameFrom, finalState.Value, bestTimes[finalState.Value]);
+        }
+
+        // 2. HELPER METHOD: Add this directly below ComputeFastestRoute
+        private int CalculateWaitTime(TimeSpan userCurrentTime, GraphEdge edge)
+        {
+            // 1. Calculate when the first bus of the day actually reaches THIS specific stop
+            TimeSpan firstArrivalAtStop = edge.FirstDepartureTime.Add(TimeSpan.FromMinutes(edge.OffsetFromRouteStart));
+
+            // 2. Calculate when the last bus reaches this stop
+            TimeSpan lastArrivalAtStop = edge.LastDepartureTime.Add(TimeSpan.FromMinutes(edge.OffsetFromRouteStart));
+
+            // 3. Did they miss the last bus? (Return a massive penalty to block this route)
+            if (userCurrentTime > lastArrivalAtStop)
+            {
+                return 9999;
+            }
+
+            // 4. Are they early for the first bus? 
+            if (userCurrentTime <= firstArrivalAtStop)
+            {
+                return (int)(firstArrivalAtStop - userCurrentTime).TotalMinutes;
+            }
+
+            // 5. The bus is currently running. Calculate the wait for the NEXT interval.
+            int minutesSinceFirstBus = (int)(userCurrentTime - firstArrivalAtStop).TotalMinutes;
+            int minutesIntoCurrentCycle = minutesSinceFirstBus % edge.FrequencyMinutes;
+
+            if (minutesIntoCurrentCycle == 0) return 0; // Bus is boarding right now!
+
+            return edge.FrequencyMinutes - minutesIntoCurrentCycle;
         }
 
         /// <summary>

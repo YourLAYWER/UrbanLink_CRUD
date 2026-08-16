@@ -475,6 +475,15 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<decimal>("BaseFare")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<TimeSpan>("FirstDepartureTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("FrequencyMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("LastDepartureTime")
+                        .HasColumnType("time");
+
                     b.Property<int>("ProviderId")
                         .HasColumnType("int");
 
