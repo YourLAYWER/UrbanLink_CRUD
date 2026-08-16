@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Timers;
 using UrbanLink_CRUD.Models.Data;
@@ -24,6 +25,48 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             _routingService = routingService;
         }
 
+        // Get All user journey
+        [HttpGet("history")]
+        [Authorize]
+        public async Task<IActionResult> GetJourneyHistory()
+        {
+            // 1. Extract the secure User ID from the JWT Token
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdString == null) return Unauthorized();
+            int userId = int.Parse(userIdString);
+
+            // 2. Query the database using Entity Framework
+            var history = await _context.Journeys
+                // Include the physical Stops so we can access their Names
+                .Include(j => j.StartStop)
+                .Include(j => j.EndStop)
+                .Where(j => j.UserId == userId)
+                .OrderByDescending(j => j.CreatedAt) // Newest trips at the top!
+                .Select(j => new
+                {
+                    ticketReference = j.TicketReference,
+
+                    // Format the date exactly how your Android XML expects it
+                    date = j.CreatedAt.ToString("dd MMM yyyy • HH:mm"),
+
+                    // Raw number, you can append the 'R' on the Android side
+                    cost = j.TotalCost,
+
+                    // Dynamically build the "A -> B" string
+                    routeSummary = $"{j.StartStop.Name} → {j.EndStop.Name}",
+
+                    // Force uppercase to match your XML design ("REDEEMED", "ACTIVE")
+                    status = j.Status.ToUpper()
+                })
+                .ToListAsync();
+
+            // 3. Return the array to the app!
+            // If they have no trips, this safely returns an empty array [] instead of a 404
+            return Ok(history);
+        }
+
+
+        // Calculate route before booking
         [HttpPost("calculate")]
         public async Task<IActionResult> CalculateRoute([FromBody] RouteCalculateRequest request)
         {
