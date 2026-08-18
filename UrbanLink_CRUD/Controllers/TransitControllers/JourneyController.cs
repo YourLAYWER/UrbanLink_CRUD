@@ -25,6 +25,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             _routingService = routingService;
         }
 
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Journey>>> GetTickets()
+        {
+            return await _context.Journeys.ToListAsync();
+        }
+
         // Get All user journey
         [HttpGet("history")]
         [Authorize]
