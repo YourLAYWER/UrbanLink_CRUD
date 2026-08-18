@@ -233,5 +233,56 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             });
         }
 
+        [HttpPatch("update-status")]
+        [Authorize] // Later, you can lock this down with [Authorize(Roles = "Driver,Admin")]
+        public async Task<IActionResult> UpdateTicketStatus([FromBody] UpdateTicketStatusDto request)
+        {
+            // 1. Force the status to uppercase so it perfectly matches your Android UI logic
+            string newStatus = request.Status.ToUpper();
+
+            // 2. Validate that the status is one of our allowed keywords
+            var validStatuses = new[] { "ACTIVE", "REDEEMED", "EXPIRED" };
+            if (!validStatuses.Contains(newStatus))
+            {
+                return BadRequest(new { message = "Invalid status. Must be ACTIVE, REDEEMED, or EXPIRED." });
+            }
+
+            // 3. Find the Journey (Ticket) in the database using the unique GUID
+            var journey = await _context.Journeys
+                .FirstOrDefaultAsync(j => j.TicketReference == request.TicketReference);
+
+            if (journey == null)
+            {
+                return NotFound(new { message = "Ticket not found." });
+            }
+
+            // 4. Security Check: Prevent double-scanning!
+            if (journey.Status == "REDEEMED" && newStatus == "REDEEMED")
+            {
+                return BadRequest(new { message = "Ticket has already been redeemed! Do not let passenger board." });
+            }
+
+            if (journey.Status == "EXPIRED")
+            {
+                return BadRequest(new { message = "Ticket is expired and no longer valid." });
+            }
+
+            // 5. Update the status and save to SQL Server
+            journey.Status = newStatus;
+
+            // Optional: Log exactly when it was scanned
+            // journey.RedeemedAt = DateTime.UtcNow; 
+
+            await _context.SaveChangesAsync();
+
+            // 6. Return success
+            return Ok(new
+            {
+                message = $"Ticket successfully marked as {newStatus}.",
+                ticketReference = journey.TicketReference,
+                newStatus = journey.Status
+            });
+        }
+
     }
 }
