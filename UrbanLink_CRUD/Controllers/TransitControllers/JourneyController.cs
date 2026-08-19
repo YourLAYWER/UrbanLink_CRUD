@@ -167,6 +167,9 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             //1.Get the current time of day for the user (e.g., 10:15 AM)
             TimeSpan departureTime = DateTime.Now.TimeOfDay;
 
+            // 2. Get the current time of day for the user
+            var currentDateTime = DateTime.Now;
+
             // --- EXECUTING OUR ALGORITHM ---
             var routingResult = _routingService.ComputeFastestRoute(request.StartStopId, request.EndStopId, departureTime);
 
@@ -185,6 +188,9 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             {
                 baseTotalCost *= 0.85m;
             }
+
+            // A. Calculate the perfect final arrival time (Current Time + Total Dijkstra Cost)
+            var finalArrivalTime = currentDateTime.AddMinutes(routingResult.TotalTimeMinutes);
 
             // Build the Master Journey Entity for the database
             var journey = new Journey
@@ -229,7 +235,9 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 journeyId = journey.Id,
                 ticketReference = journey.TicketReference,
                 totalCost = journey.TotalCost,
-                estimatedDurationMinutes = journey.TotalDurationMinutes
+                estimatedDurationMinutes = journey.TotalDurationMinutes,
+                estimatedArrivalTime = finalArrivalTime.ToString("HH:mm") // The exact time they reach the destination!
+
             });
         }
 
