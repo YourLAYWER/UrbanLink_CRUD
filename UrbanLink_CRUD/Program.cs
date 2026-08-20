@@ -171,6 +171,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using UrbanLink_CRUD.Models.Data;
 using UrbanLink_CRUD.Services.RoutingLogic; // 1. Updated Namespace
+using UrbanLink_CRUD.Services.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -243,6 +244,11 @@ builder.Services.AddDbContext<ULDBContext>(options =>
 // --- REGISTERING THE SERVICE ---
 // 2. Updated DI Registration to use the Interface
 builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
+
+
+// Register the background worker
+builder.Services.AddHostedService<TicketExpirationWorker>();
+
 
 var app = builder.Build();
 
