@@ -44,7 +44,7 @@ namespace UrbanLink_CRUD.Controllers.JWTAuthentication
                 Name = request.FullName, 
                 Email = request.Email,
                 Password = hashedPassword, // Store the hash, NEVER the plain text
-                CommuterProfile = request.CommuterProfile,
+                Role = Models.Enums.Role.StandardUser,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -81,7 +81,7 @@ namespace UrbanLink_CRUD.Controllers.JWTAuthentication
             {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, user.CommuterProfile) // e.g., "Student" or "Standard"
+            new Claim(ClaimTypes.Role, user.Role.ToString()) // e.g., "Student" or "Standard"
             };
             // 4. Generate the cryptographic signature
             var jwtSettings = _configuration.GetSection("Jwt");

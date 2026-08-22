@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using UrbanLink_CRUD.Models.Entities;
 using UrbanLink_CRUD.Models.Entities.Aggregator;
 using UrbanLink_CRUD.Models.Entities.Transit;
 
@@ -39,6 +40,13 @@ namespace UrbanLink_CRUD.Models.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+
+            // Tell EF Core to save the Enum as a readable string in SQL Server!
+            modelBuilder.Entity<User>()
+                .Property(u => u.Role)
+                .HasConversion<string>();
+
 
             // ----------------------------------------------------
             // NEW: ROUTE SCHEDULE Configuration

@@ -19,7 +19,7 @@ namespace UrbanLink_CRUD.Models.Data
                     Name = "System Administrator",
                     Email = "admin@urbanlink.co.za",
                     Password = adminPasswordHash,
-                    CommuterProfile = "Admin",
+                    Role = Models.Enums.Role.Admin,
                     CreatedAt = DateTime.UtcNow
                 };
 

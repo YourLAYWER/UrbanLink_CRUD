@@ -26,7 +26,7 @@ namespace UrbanLink_CRUD.Controllers.Users
         public async Task<ActionResult<IEnumerable<object>>> GetUsers()
         {
             return await _context.Users
-                .Select(u => new { u.Id, u.Name, u.Email, u.CommuterProfile, u.CreatedAt })
+                .Select(u => new { u.Id, u.Name, u.Email, u.Role, u.CreatedAt })
                 .ToListAsync();
         }
 
@@ -51,7 +51,7 @@ namespace UrbanLink_CRUD.Controllers.Users
             {
                 Name = user.Name,
                 email = user.Email,
-                commuterProfile = user.CommuterProfile
+                commuterProfile = user.Role.ToString(),
                 // You can easily add more fields here later, like WalletBalance or Role
             });
         }
@@ -64,7 +64,7 @@ namespace UrbanLink_CRUD.Controllers.Users
             var user = await _context.Users.FindAsync(id);
             if (user == null) return NotFound(new { message = $"User with ID {id} not found." });
 
-            return new { user.Id, user.Name, user.Email, user.CommuterProfile, user.CreatedAt };
+            return new { user.Id, user.Name, user.Email, user.Role, user.CreatedAt };
         }
 
         // PUT: api/user/5
@@ -77,7 +77,7 @@ namespace UrbanLink_CRUD.Controllers.Users
             if (user == null) return NotFound(new { message = $"User with ID {id} not found." });
 
             user.Name = updatedUser.Name;
-            user.CommuterProfile = updatedUser.CommuterProfile;
+            user.Role = updatedUser.Role;
 
             await _context.SaveChangesAsync();
             return NoContent();
