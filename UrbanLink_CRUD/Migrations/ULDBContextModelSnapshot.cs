@@ -331,6 +331,37 @@ namespace UrbanLink_CRUD.Migrations
                     b.ToTable("JourneyLegs");
                 });
 
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteSchedule", b =>
+                {
+                    b.Property<int>("ScheduleId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ScheduleId"));
+
+                    b.Property<string>("DaysOfOperation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<TimeSpan>("FirstDepartureTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("FrequencyMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("LastDepartureTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("RouteId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ScheduleId");
+
+                    b.HasIndex("RouteId");
+
+                    b.ToTable("RouteSchedules");
+                });
+
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteSegment", b =>
                 {
                     b.Property<int>("Id")
@@ -474,15 +505,6 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.Property<decimal>("BaseFare")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<TimeSpan>("FirstDepartureTime")
-                        .HasColumnType("time");
-
-                    b.Property<int>("FrequencyMinutes")
-                        .HasColumnType("int");
-
-                    b.Property<TimeSpan>("LastDepartureTime")
-                        .HasColumnType("time");
 
                     b.Property<int>("ProviderId")
                         .HasColumnType("int");
@@ -686,6 +708,17 @@ namespace UrbanLink_CRUD.Migrations
                     b.Navigation("Route");
                 });
 
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteSchedule", b =>
+                {
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.TransitRoute", "TransitRoute")
+                        .WithMany("Schedules")
+                        .HasForeignKey("RouteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TransitRoute");
+                });
+
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteSegment", b =>
                 {
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Stop", "DestinationStop")
@@ -792,6 +825,8 @@ namespace UrbanLink_CRUD.Migrations
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.TransitRoute", b =>
                 {
+                    b.Navigation("Schedules");
+
                     b.Navigation("Segments");
                 });
 #pragma warning restore 612, 618

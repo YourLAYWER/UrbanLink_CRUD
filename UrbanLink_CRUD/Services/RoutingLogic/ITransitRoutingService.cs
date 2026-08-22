@@ -3,6 +3,6 @@
     public interface ITransitRoutingService
     {
         void InitializeGraph(IEnumerable<GraphEdge> edges, IEnumerable<int> transferHubIds);
-        RoutingResult ComputeFastestRoute(int startStopId, int targetStopId, TimeSpan userStartTime);
+        RoutingResult ComputeFastestRoute(int startStopId, int targetStopId, DateTime userStartTime);
     }
 }

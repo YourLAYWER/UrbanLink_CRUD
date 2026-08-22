@@ -79,12 +79,11 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (request.StartStopId == request.EndStopId)
                 return BadRequest(new { message = "Start and destination cannot be the same." });
 
-            // 1. Get the current time of day for the user
+            // 1. Get the exact current DateTime for the user
             var currentDateTime = DateTime.Now;
-            TimeSpan departureTime = currentDateTime.TimeOfDay;
 
-            // 2. Run your fantastic routing engine
-            var routingResult = _routingService.ComputeFastestRoute(request.StartStopId, request.EndStopId, departureTime);
+            // 2. Run your fantastic routing engine using the FULL DateTime context
+            var routingResult = _routingService.ComputeFastestRoute(request.StartStopId, request.EndStopId, currentDateTime);
 
             // -1 indicates no path was found
             if (routingResult.TotalTimeMinutes == -1 || !routingResult.Legs.Any())
@@ -141,7 +140,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 StopId = request.EndStopId,
                 StopName = finalStop?.Name ?? "Destination",
                 TransitLine = "Arrive",
-                ArrivalTime = finalArrivalTime.ToString("HH:mm") // The exact time they reach the destination!
+                ArrivalTime = finalArrivalTime.ToString("HH:mm")
             });
 
             // 6. Package it all up for Android!
@@ -164,14 +163,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (userIdString == null) return Unauthorized();
             int userId = int.Parse(userIdString);
 
-            //1.Get the current time of day for the user (e.g., 10:15 AM)
-            TimeSpan departureTime = DateTime.Now.TimeOfDay;
-
-            // 2. Get the current time of day for the user
+            // 1. Get the current full DateTime for the user
             var currentDateTime = DateTime.Now;
 
             // --- EXECUTING OUR ALGORITHM ---
-            var routingResult = _routingService.ComputeFastestRoute(request.StartStopId, request.EndStopId, departureTime);
+            // Pass the full currentDateTime instead of just the TimeOfDay
+            var routingResult = _routingService.ComputeFastestRoute(request.StartStopId, request.EndStopId, currentDateTime);
 
             // Handle the "No Route Found" scenario gracefully
             if (routingResult.TotalTimeMinutes == -1 || routingResult.Legs.Count == 0)
@@ -189,7 +186,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 baseTotalCost *= 0.85m;
             }
 
-            // A. Calculate the perfect final arrival time (Current Time + Total Dijkstra Cost)
+            // A. Calculate the perfect final arrival time
             var finalArrivalTime = currentDateTime.AddMinutes(routingResult.TotalTimeMinutes);
 
             // Build the Master Journey Entity for the database
@@ -206,11 +203,11 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 // 2. Explicitly referenced the EF Core Entity namespace to prevent compiler confusion
                 Legs = new List<UrbanLink_CRUD.Models.Entities.Transit.JourneyLeg>()
             };
+
             // Map your algorithm's output to the EF Core Database Entities
             int sequence = 1;
             foreach (var algLeg in routingResult.Legs)
             {
-                // 3. Same here - map the algorithm record (algLeg) into the EF Core entity
                 journey.Legs.Add(new UrbanLink_CRUD.Models.Entities.Transit.JourneyLeg
                 {
                     SequenceOrder = sequence,
@@ -236,13 +233,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 ticketReference = journey.TicketReference,
                 totalCost = journey.TotalCost,
                 estimatedDurationMinutes = journey.TotalDurationMinutes,
-                estimatedArrivalTime = finalArrivalTime.ToString("HH:mm") // The exact time they reach the destination!
-
+                estimatedArrivalTime = finalArrivalTime.ToString("HH:mm")
             });
         }
 
         [HttpPatch("update-status")]
-        [Authorize] // Later, you can lock this down with [Authorize(Roles = "Driver,Admin")]
+        [Authorize]
         public async Task<IActionResult> UpdateTicketStatus([FromBody] UpdateTicketStatusDto request)
         {
             // 1. Force the status to uppercase so it perfectly matches your Android UI logic
@@ -277,9 +273,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
             // 5. Update the status and save to SQL Server
             journey.Status = newStatus;
-
-            // Optional: Log exactly when it was scanned
-            // journey.RedeemedAt = DateTime.UtcNow; 
 
             await _context.SaveChangesAsync();
 

@@ -22,6 +22,9 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<Entities.Transit.RouteStop> RouteStops { get; set; } = null!;
         public DbSet<Entities.Transit.JourneyLeg> JourneyLegs { get; set; } = null!;
 
+        // NEW: Tell EF Core to track the RouteSchedules table
+        public DbSet<RouteSchedule> RouteSchedules { get; set; } = null!;
+
         public DbSet<Retailer> Retailers { get; set; } = null!;
         public DbSet<RetailerProduct> RetailerProducts { get; set; } = null!;
         public DbSet<Order> Orders { get; set; } = null!;
@@ -29,17 +32,22 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<Product> Products { get; set; } = null!;
 
         public DbSet<OrderItem> OrderItems { get; set; } = null!;
-
         public DbSet<Ticket> Tickets { get; set; } = null!;
-
         public DbSet<Cart> Carts { get; set; } = null!;
-
         public DbSet<CartItem> CartItems { get; set; } = null!;
-
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // ----------------------------------------------------
+            // NEW: ROUTE SCHEDULE Configuration
+            // ----------------------------------------------------
+            modelBuilder.Entity<Entities.Transit.TransitRoute>()
+                .HasMany(tr => tr.Schedules)
+                .WithOne(rs => rs.TransitRoute)
+                .HasForeignKey(rs => rs.RouteId)
+                .OnDelete(DeleteBehavior.Cascade); // Automatically clean up schedules if a route is deleted
 
             // Disable cascade delete for Boarding Stop to prevent multiple cascade paths
             modelBuilder.Entity<Entities.Transit.JourneyLeg>()
@@ -90,18 +98,18 @@ namespace UrbanLink_CRUD.Models.Data
             // ----------------------------------------------------
             modelBuilder.Entity<Entities.Transit.RouteStop>()
                 .HasOne(rs => rs.Stop)
-                .WithMany(s => s.RouteStops) // Maps to the collection in the Stop class
+                .WithMany(s => s.RouteStops)
                 .HasForeignKey(rs => rs.StopId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-          modelBuilder.Entity<Entities.Transit.RouteStop>()
+            modelBuilder.Entity<Entities.Transit.RouteStop>()
                 .HasOne(rs => rs.RouteSegment)
                 .WithMany()
                 .HasForeignKey(rs => rs.SegmentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Entities.Transit.TransitRoute>()
-            .ToTable("TransitRoute");
+                .ToTable("TransitRoute");
         }
     }
 }
