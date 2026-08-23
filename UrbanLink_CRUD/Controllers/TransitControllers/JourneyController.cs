@@ -55,7 +55,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                     // Format the date exactly how your Android XML expects it
                     date = j.CreatedAt.ToString("dd MMM yyyy • HH:mm"),
 
-                    // Raw number, you can append the 'R' on the Android side
+                    // Raw number, we can append the 'R' on the Android side
                     cost = j.TotalCost,
 
                     // Dynamically build the "A -> B" string
