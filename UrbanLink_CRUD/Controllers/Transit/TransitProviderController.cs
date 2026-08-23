@@ -22,6 +22,58 @@ namespace UrbanLink_CRUD.Controllers.Transit
             return await _context.TransitProviders.ToListAsync();
         }
 
+
+        /// <summary>
+        /// Retrieves a lightweight list of transit providers filtered by transport type (e.g., "Bus", "Rail").
+        /// </summary>
+        /// <param name="transportType">The type of transport (case-insensitive)</param>
+        [HttpGet("type/{transportType}")]
+        public async Task<IActionResult> GetProvidersByType(string transportType)
+        {
+            var providers = await _context.TransitProviders
+                // Filter by the type the Android app requested ("Bus" or "Rail")
+                .Where(p => p.Type.ToLower() == transportType.ToLower())
+                // Lightweight projection for the UI
+                .Select(p => new
+                {
+                    Id = p.Id,
+                    Name = p.Name
+                })
+                .OrderBy(p => p.Name)
+                .ToListAsync();
+
+            if (providers.Count == 0)
+            {
+                return NotFound(new { message = $"No providers found for transport type: {transportType}" });
+            }
+
+            return Ok(providers);
+        }
+
+        /// <summary>
+        /// Retrieves a lightweight list of transit providers for UI dropdowns.
+        /// </summary>
+        [HttpGet("summary")]
+        public async Task<IActionResult> GetProviderSummaries()
+        {
+            var providers = await _context.TransitProviders
+                .Select(p => new
+                {
+                    Id = p.Id,
+                    Name = p.Name
+                })
+                // Order them alphabetically
+                .OrderBy(p => p.Name)
+                .ToListAsync();
+
+            if (providers.Count == 0)
+            {
+                return NotFound(new { message = "No transit providers found." });
+            }
+
+            return Ok(providers);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<TransitProvider>> GetTransitProvider(int id)
         {

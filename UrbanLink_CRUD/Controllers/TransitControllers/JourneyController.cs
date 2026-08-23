@@ -80,7 +80,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 return BadRequest(new { message = "Start and destination cannot be the same." });
 
             // 1. Get the exact current DateTime for the user
-            var currentDateTime = DateTime.Now;
+            // var currentDateTime = DateTime.Now;
+            var currentDateTime = new DateTime(2026, 8, 24, 10, 0, 0);
 
             // 2. Run your fantastic routing engine using the FULL DateTime context
             var routingResult = _routingService.ComputeFastestRoute(request.StartStopId, request.EndStopId, currentDateTime);
@@ -164,7 +165,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             int userId = int.Parse(userIdString);
 
             // 1. Get the current full DateTime for the user
-            var currentDateTime = DateTime.Now;
+            // var currentDateTime = DateTime.Now;
+            var currentDateTime = new DateTime(2026, 8, 24, 10, 0, 0);
 
             // --- EXECUTING OUR ALGORITHM ---
             // Pass the full currentDateTime instead of just the TimeOfDay
@@ -284,64 +286,5 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 newStatus = journey.Status
             });
         }
-
-        /// <summary>
-        /// Retrieves all transit routes and their schedules for a specific provider.
-        /// </summary>
-        /// <param name="providerId">The ID of the Transit Provider (e.g., Algoa Bus)</param>
-        [HttpGet("provider/{providerId}")]
-        public async Task<IActionResult> GetRoutesByProvider(int providerId)
-        {
-            // 1. First check if the provider even exists to give a clear error message
-            var providerExists = await _context.TransitProviders.AnyAsync(p => p.Id == providerId);
-            if (!providerExists)
-            {
-                return NotFound(new { message = $"Transit Provider with ID {providerId} was not found." });
-            }
-
-            // 2. Fetch the routes and eagerly load their schedules
-            var routes = await _context.TransitRoutes
-                .Where(r => r.ProviderId == providerId)
-                .Include(r => r.Schedules) // Pull in the new schedules we just created!
-                .Select(r => new
-                {
-                    RouteId = r.Id,
-                    RouteName = r.RouteName,
-                    TransportType = r.TransportType,
-                    BaseFare = r.BaseFare,
-
-                    // Format the schedules cleanly for the Android client
-                    Schedules = r.Schedules.Select(s => new
-                    {
-                        ScheduleId = s.ScheduleId,
-                        DaysOfOperation = s.DaysOfOperation,
-
-                        // Convert TimeSpan to a clean "HH:mm" string
-                        FirstDeparture = s.FirstDepartureTime.ToString(@"hh\:mm"),
-                        LastDeparture = s.LastDepartureTime.ToString(@"hh\:mm"),
-
-                        FrequencyMinutes = s.FrequencyMinutes
-                    }).ToList()
-                })
-                .ToListAsync();
-
-            // 3. Handle the edge case where a provider exists but has no routes yet
-            if (routes.Count == 0)
-            {
-                return Ok(new
-                {
-                    message = "This provider currently has no active routes.",
-                    data = routes
-                });
-            }
-
-            // 4. Return the structured data
-            return Ok(new
-            {
-                message = $"Successfully retrieved {routes.Count} routes.",
-                data = routes
-            });
-        }
-
     }
 }
