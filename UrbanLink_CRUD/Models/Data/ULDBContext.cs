@@ -23,6 +23,9 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<Entities.Transit.RouteStop> RouteStops { get; set; } = null!;
         public DbSet<Entities.Transit.JourneyLeg> JourneyLegs { get; set; } = null!;
 
+        public DbSet<Bus> Buses { get; set; }
+        public DbSet<ConductorShift> ConductorShifts { get; set; }
+
         // NEW: Tell EF Core to track the RouteSchedules table
         public DbSet<RouteSchedule> RouteSchedules { get; set; } = null!;
 
@@ -46,6 +49,36 @@ namespace UrbanLink_CRUD.Models.Data
             modelBuilder.Entity<User>()
                 .Property(u => u.Role)
                 .HasConversion<string>();
+
+            // ----------------------------------------------------
+            // NEW: CONDUCTOR Configuration
+            // ----------------------------------------------------
+
+            // 1. Bus -> Provider Relationship
+            modelBuilder.Entity<Bus>()
+                .HasOne(b => b.Provider)
+                .WithMany()
+                .HasForeignKey(b => b.ProviderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // 2. Shift -> Bus Relationship
+            modelBuilder.Entity<ConductorShift>()
+                .HasOne(cs => cs.Bus)
+                .WithMany()
+                .HasForeignKey(cs => cs.BusId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // 3. Shift -> Route Relationship
+            modelBuilder.Entity<ConductorShift>()
+                .HasOne(cs => cs.Route)
+                .WithMany()
+                .HasForeignKey(cs => cs.RouteId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // 4. Configure Currency Precision for SQL Server
+            modelBuilder.Entity<ConductorShift>()
+                .Property(cs => cs.TotalCashCollected)
+                .HasPrecision(18, 2);
 
 
             // ----------------------------------------------------
