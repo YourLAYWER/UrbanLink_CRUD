@@ -7,6 +7,7 @@ using UrbanLink_CRUD.Models.Data;
 using UrbanLink_CRUD.Models.Dtos.Authentication.Login;
 using UrbanLink_CRUD.Models.Dtos.Authentication.Register;
 using UrbanLink_CRUD.Models.Entities;
+using UrbanLink_CRUD.Models.Enums;
 
 namespace UrbanLink_CRUD.Controllers.JWTAuthentication
 {
@@ -23,7 +24,7 @@ namespace UrbanLink_CRUD.Controllers.JWTAuthentication
             _configuration = configuration;
         }
 
-        // Registration Endpoint
+        // Registration Endpoint for standard commuter
         [HttpPost("register")]
         public IActionResult Register([FromBody] RegisterRequestDto request)
         {
@@ -54,6 +55,45 @@ namespace UrbanLink_CRUD.Controllers.JWTAuthentication
 
             // 5. Return a success response to the Android app
             return Ok(new { message = "User registered successfully." });
+        }
+
+        [HttpPost("register-staff")]
+        // [Authorize(Roles = "Admin")] // Uncomment this once you have an Admin user to test with!
+        public IActionResult RegisterStaff([FromBody] RegisterStaffRequestDto request)
+        {
+            // 1. Check if the email is already taken
+            var existingUser = _context.Users.FirstOrDefault(u => u.Email == request.Email);
+            if (existingUser != null)
+            {
+                return BadRequest(new { message = "Email is already in use." });
+            }
+
+            // 2. Validate the role to prevent typos or unauthorized roles
+            var validStaffRoles = new List<string> { "Conductor", "Driver", "Admin" };
+            if (!validStaffRoles.Contains(request.Role))
+            {
+                return BadRequest(new { message = "Invalid role. Must be Conductor, Driver, or Admin." });
+            }
+
+            // 3. Hash the password and create the user
+            var newUser = new User // Change 'User' if your entity is named differently (e.g., ApplicationUser)
+            {
+                Name = request.Name,
+                Email = request.Email,
+                Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
+
+                // If your User.Role is a string, do this:
+                //Role = request.Role
+
+                // If your User.Role is an Enum, do this instead:
+                Role = Enum.Parse<Role>(request.Role) 
+            };
+
+            // 4. Save to the database
+            _context.Users.Add(newUser);
+            _context.SaveChanges();
+
+            return Ok(new { message = $"{request.Role} account created successfully." });
         }
 
         // Login Endpoint
@@ -99,7 +139,10 @@ namespace UrbanLink_CRUD.Controllers.JWTAuthentication
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
             // 6. Return the token to the Android app
-            return Ok(new { token = tokenString });
+            return Ok(new { 
+                token = tokenString,
+                role = user.Role.ToString()
+            });
         }
     }
 }

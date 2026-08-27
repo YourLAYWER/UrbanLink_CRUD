@@ -257,6 +257,10 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<int>("StandingCapacity")
                         .HasColumnType("int");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ProviderId");

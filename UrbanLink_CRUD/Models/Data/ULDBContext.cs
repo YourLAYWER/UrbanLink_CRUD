@@ -68,6 +68,11 @@ namespace UrbanLink_CRUD.Models.Data
                 .HasForeignKey(cs => cs.BusId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Tells EF Core to save the Enum as a readable string in the database
+            modelBuilder.Entity<Bus>()
+                .Property(b => b.Status)
+                .HasConversion<string>();
+
             // 3. Shift -> Route Relationship
             modelBuilder.Entity<ConductorShift>()
                 .HasOne(cs => cs.Route)

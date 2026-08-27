@@ -99,6 +99,7 @@ using (var scope = app.Services.CreateScope())
 
         // 1. SEED TRANSIT TABLES FIRST
         DbInitializer.SeedAdminUser(context);
+        DbInitializer.SeedBuses(context);
         DbInitializer.SeedTransitProviders(context);
         DbInitializer.SeedTransitSystem(context);
 

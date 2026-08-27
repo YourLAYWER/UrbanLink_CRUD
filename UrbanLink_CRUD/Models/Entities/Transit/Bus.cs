@@ -1,4 +1,6 @@
-﻿namespace UrbanLink_CRUD.Models.Entities.Transit
+﻿using UrbanLink_CRUD.Models.Enums;
+
+namespace UrbanLink_CRUD.Models.Entities.Transit
 {
     public class Bus
     {
@@ -15,10 +17,12 @@
         public int StandingCapacity { get; set; }
 
         // "Active", "InMaintenance", "OutOfService"
-        public required string Status = "Active";
+        public BusStatus Status {  get; set; }
 
         // Foreign Key: Which provider owns this bus? (Algoa Bus, etc.)
         public int ProviderId { get; set; }
         public TransitProvider Provider { get; set; }
+
+        public ICollection<ConductorShift> ConductorShifts { get; set; }
     }
 }
