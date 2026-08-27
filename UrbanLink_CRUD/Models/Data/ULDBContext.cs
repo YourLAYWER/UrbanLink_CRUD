@@ -80,6 +80,13 @@ namespace UrbanLink_CRUD.Models.Data
                 .Property(cs => cs.TotalCashCollected)
                 .HasPrecision(18, 2);
 
+            // 5. Restrict deletion of Incident Reports
+            modelBuilder.Entity<IncidentReport>()
+                .HasOne(ir => ir.ConductorShift)
+                .WithMany(cs => cs.IncidentReports)
+                .HasForeignKey(ir => ir.ConductorShiftId)
+                .OnDelete(DeleteBehavior.Restrict);
+
 
             // ----------------------------------------------------
             // NEW: ROUTE SCHEDULE Configuration

@@ -15,5 +15,8 @@
 
         // Financial tracking for walk-on passengers
         public decimal TotalCashCollected { get; set; }
+
+        // Add this at the bottom:
+        public ICollection<IncidentReport> IncidentReports { get; set; }
     }
 }

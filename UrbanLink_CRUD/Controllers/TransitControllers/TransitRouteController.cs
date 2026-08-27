@@ -74,5 +74,20 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 data = routes
             });
         }
+
+        [HttpGet("routes")]
+        public async Task<IActionResult> GetAllRoutes()
+        {
+            // Simply returning ID and Name to keep the JSON payload lightweight
+            var routes = await _context.TransitRoutes
+                .Select(r => new
+                {
+                    id = r.Id,
+                    name = r.RouteName
+                })
+                .ToListAsync();
+
+            return Ok(new { data = routes });
+        }
     }
 }
