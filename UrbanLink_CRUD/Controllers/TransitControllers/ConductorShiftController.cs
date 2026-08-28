@@ -72,5 +72,53 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 startTime = newShift.ShiftStartTime
             });
         }
+
+        [HttpPost("end")]
+        public async Task<IActionResult> EndShift()
+        {
+            // 1. Get the Conductor's ID securely from their login token
+            var conductorId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(conductorId))
+            {
+                return Unauthorized(new { message = "Invalid user token." });
+            }
+
+            // 2. Find the conductor's currently active shift (ShiftEndTime is null)
+            var activeShift = await _context.ConductorShifts
+                .Include(cs => cs.Bus) // Optional: Bring in Bus data for the summary screen
+                .Include(cs => cs.Route) // Optional: Bring in Route data for the summary
+                .FirstOrDefaultAsync(cs => cs.ConductorId == conductorId && cs.ShiftEndTime == null);
+
+            if (activeShift == null)
+            {
+                return BadRequest(new { message = "No active shift found. You are already clocked out." });
+            }
+
+            // 3. Clock them out
+            activeShift.ShiftEndTime = DateTime.UtcNow;
+
+            // Note: If you add a TicketScans table later, you would count them here:
+            // var scanCount = await _context.TicketScans.CountAsync(t => t.ShiftId == activeShift.Id);
+
+            // 4. Save changes to the database
+            _context.ConductorShifts.Update(activeShift);
+            await _context.SaveChangesAsync();
+
+            // 5. Return the final summary data so the Android app can display the Shift Summary screen
+            return Ok(new
+            {
+                message = "Shift ended successfully.",
+                shiftSummary = new
+                {
+                    shiftId = activeShift.Id,
+                    busFleetNumber = activeShift.Bus.FleetNumber,
+                    routeName = activeShift.Route.RouteName,
+                    startTime = activeShift.ShiftStartTime,
+                    endTime = activeShift.ShiftEndTime,
+                    totalCashHandover = activeShift.TotalCashCollected // This was initialized to 0 in StartShift
+                                                                       // digitalTicketsScanned = scanCount // Pass this back once we build the scanning logic!
+                }
+            });
+        }
     }
 }

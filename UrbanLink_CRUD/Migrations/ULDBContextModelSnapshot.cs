@@ -279,6 +279,9 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<int>("BusId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("BusId1")
+                        .HasColumnType("int");
+
                     b.Property<string>("ConductorId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -299,6 +302,8 @@ namespace UrbanLink_CRUD.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BusId");
+
+                    b.HasIndex("BusId1");
 
                     b.HasIndex("RouteId");
 
@@ -780,6 +785,10 @@ namespace UrbanLink_CRUD.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Bus", null)
+                        .WithMany("ConductorShifts")
+                        .HasForeignKey("BusId1");
+
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.TransitRoute", "Route")
                         .WithMany()
                         .HasForeignKey("RouteId")
@@ -957,6 +966,11 @@ namespace UrbanLink_CRUD.Migrations
                     b.Navigation("Orders");
 
                     b.Navigation("RetailerProducts");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Bus", b =>
+                {
+                    b.Navigation("ConductorShifts");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.ConductorShift", b =>
