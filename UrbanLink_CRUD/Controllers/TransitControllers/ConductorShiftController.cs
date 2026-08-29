@@ -107,6 +107,61 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             });
         }
 
+        [HttpPost("cash-sale")]
+        public async Task<IActionResult> RecordCashSale([FromBody] CashSaleRequest request)
+        {
+            var shift = await _context.ConductorShifts
+                .Include(s => s.Route)
+                .FirstOrDefaultAsync(s => s.Id == request.ShiftId);
+
+            if (shift == null || shift.ShiftEndTime != null)
+            {
+                return BadRequest(new { message = "Invalid or closed shift." });
+            }
+
+            decimal fareTotal = shift.Route.BaseFare * request.PassengerCount;
+            shift.TotalCashCollected += fareTotal;
+
+            // NEW: Generate the physical tickets for the slip machine
+            var issuedTickets = new List<PrintedTicketDto>();
+
+            for (int i = 0; i < request.PassengerCount; i++)
+            {
+                // 1. Create a unique ID for the printed slip
+                string uniqueTicketId = $"CASH-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}";
+
+                // 2. Save it to your database so inspectors can verify it later
+                var newTicket = new Ticket
+                {
+                    QRCodeData = uniqueTicketId,
+                    Status = Models.Enums.TicketStatus.Used, // Marked as 'Used' instantly since they are boarding right now
+                                                             // Optional: You could link it to the ShiftId here if your Ticket model supports it
+                };
+                _context.Tickets.Add(newTicket);
+
+                // 3. Add the details to the response for the Bluetooth printer
+                issuedTickets.Add(new PrintedTicketDto
+                {
+                    TicketId = uniqueTicketId,
+                    RouteName = shift.Route.RouteName,
+                    FarePaid = shift.Route.BaseFare,
+                    IssuedAt = DateTime.UtcNow
+                });
+            }
+
+            _context.ConductorShifts.Update(shift);
+            await _context.SaveChangesAsync(); // Saves the cash total AND the new tickets
+
+            // Return everything to Android
+            return Ok(new
+            {
+                message = "Cash sale recorded successfully.",
+                amountAdded = fareTotal,
+                newTotal = shift.TotalCashCollected,
+                receipts = issuedTickets // The printer data!
+            });
+        }
+
 
         [HttpPost("end")]
         public async Task<IActionResult> EndShift()

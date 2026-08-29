@@ -13,6 +13,7 @@ namespace UrbanLink_CRUD.Models.Data
             if (!context.Users.Any(u => u.Email == "admin@urbanlink.co.za"))
             {
                 string adminPasswordHash = BCrypt.Net.BCrypt.HashPassword("AdminSecure@2026!", 11);
+                
 
                 var adminUser = new User
                 {
@@ -23,7 +24,26 @@ namespace UrbanLink_CRUD.Models.Data
                     CreatedAt = DateTime.UtcNow
                 };
 
+                
+
                 context.Users.Add(adminUser);
+                context.SaveChanges();
+            }
+
+            if(!context.Users.Any(u => u.Email == "conductor@urbanlink.co.za"))
+            {
+                string conductorPasswordHash = BCrypt.Net.BCrypt.HashPassword("ConductorSecure@2026!", 11);
+
+                var conductorUser = new User
+                {
+                    Name = "Yongama Makhala",
+                    Email = "conductor@urbanlink.co.za",
+                    Password = conductorPasswordHash,
+                    Role = Models.Enums.Role.Conductor,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                context.Users.Add(conductorUser);
                 context.SaveChanges();
             }
         }
