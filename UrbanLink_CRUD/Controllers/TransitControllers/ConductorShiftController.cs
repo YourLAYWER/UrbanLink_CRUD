@@ -73,6 +73,41 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             });
         }
 
+
+        [HttpPost("scan")]
+        public async Task<IActionResult> ScanTicket([FromBody] ScanTicketRequest request)
+        {
+            // 1. Find the ticket in the database
+            var ticket = await _context.Tickets.FirstOrDefaultAsync(t => t.QRCodeData == request.QRCodeData);
+
+            if (ticket == null)
+            {
+                return NotFound(new { message = "Invalid Ticket: Not found in system." });
+            }
+
+            // 2. Check if the ticket is already used
+            if (ticket.Status != Models.Enums.TicketStatus.Active)
+            {
+                return BadRequest(new { message = $"Ticket Rejected: Already {ticket.Status}." });
+            }
+
+            // 3. Mark the ticket as used
+            ticket.Status = Models.Enums.TicketStatus.Used; // Ensure you have 'Used' in your TicketStatus Enum!
+            _context.Tickets.Update(ticket);
+
+            // (Optional: You could create a 'TicketScanLog' record here linking the ticket to the ShiftId)
+
+            await _context.SaveChangesAsync();
+
+            // 4. Return success and the base fare amount (hardcoded to 15.00 for this example, but you'd pull it from the Ticket/Route)
+            return Ok(new
+            {
+                message = "Ticket Validated",
+                fareAmount = 15.00m
+            });
+        }
+
+
         [HttpPost("end")]
         public async Task<IActionResult> EndShift()
         {
