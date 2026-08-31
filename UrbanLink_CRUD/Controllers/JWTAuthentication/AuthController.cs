@@ -133,7 +133,7 @@ namespace UrbanLink_CRUD.Controllers.JWTAuthentication
                 issuer: jwtSettings["Issuer"],
                 audience: jwtSettings["Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(15), // 15-minute lifespan for security
+                expires: DateTime.UtcNow.AddMinutes(40), // minute lifespan for security
                 signingCredentials: credentials);
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
