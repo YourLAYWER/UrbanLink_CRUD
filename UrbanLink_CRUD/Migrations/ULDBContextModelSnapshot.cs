@@ -286,6 +286,9 @@ namespace UrbanLink_CRUD.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("DigitalTicketScanned")
+                        .HasColumnType("int");
+
                     b.Property<int>("RouteId")
                         .HasColumnType("int");
 
@@ -363,13 +366,16 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("EndStopId")
+                    b.Property<int?>("EndStopId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IssuedDuringShiftId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("RedeemedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("StartStopId")
+                    b.Property<int?>("StartStopId")
                         .HasColumnType("int");
 
                     b.Property<string>("Status")
@@ -385,12 +391,14 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<int>("TotalDurationMinutes")
                         .HasColumnType("int");
 
-                    b.Property<int>("UserId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("EndStopId");
+
+                    b.HasIndex("IssuedDuringShiftId");
 
                     b.HasIndex("StartStopId");
 
@@ -816,22 +824,24 @@ namespace UrbanLink_CRUD.Migrations
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Stop", "EndStop")
                         .WithMany()
                         .HasForeignKey("EndStopId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.ConductorShift", "IssuedDuringShift")
+                        .WithMany()
+                        .HasForeignKey("IssuedDuringShiftId");
 
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Stop", "StartStop")
                         .WithMany()
                         .HasForeignKey("StartStopId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("UrbanLink_CRUD.Models.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("UserId");
 
                     b.Navigation("EndStop");
+
+                    b.Navigation("IssuedDuringShift");
 
                     b.Navigation("StartStop");
 

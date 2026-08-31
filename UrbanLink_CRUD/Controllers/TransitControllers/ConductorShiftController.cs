@@ -77,35 +77,105 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         [HttpPost("scan")]
         public async Task<IActionResult> ScanTicket([FromBody] ScanTicketRequest request)
         {
-            // 1. Find the ticket in the database
-            var ticket = await _context.Tickets.FirstOrDefaultAsync(t => t.QRCodeData == request.QRCodeData);
+            // 1. Parse the scanned QR Code string into a Guid (since TicketReference is a Guid)
+            if (!Guid.TryParse(request.QRCodeData, out Guid ticketGuid))
+            {
+                return BadRequest(new { message = "Invalid QR Code format." });
+            }
 
-            if (ticket == null)
+            // 2. Find the Journey in the database
+            var journey = await _context.Journeys.FirstOrDefaultAsync(j => j.TicketReference == ticketGuid);
+
+            if (journey == null)
             {
                 return NotFound(new { message = "Invalid Ticket: Not found in system." });
             }
 
-            // 2. Check if the ticket is already used
-            if (ticket.Status != Models.Enums.TicketStatus.Active)
+            // 3. Check if the journey is already used
+            if (journey.Status != "Active")
             {
-                return BadRequest(new { message = $"Ticket Rejected: Already {ticket.Status}." });
+                return BadRequest(new { message = $"Ticket Rejected: Already {journey.Status}." });
             }
 
-            // 3. Mark the ticket as used
-            ticket.Status = Models.Enums.TicketStatus.Used; // Ensure you have 'Used' in your TicketStatus Enum!
-            _context.Tickets.Update(ticket);
+            // 4. Verify the shift is valid so we can link the audit trail
+            var shift = await _context.ConductorShifts.FirstOrDefaultAsync(s => s.Id == request.ShiftId);
+            if (shift == null || shift.ShiftEndTime != null)
+            {
+                return BadRequest(new { message = "Invalid or closed shift. Cannot process scan." });
+            }
 
-            // (Optional: You could create a 'TicketScanLog' record here linking the ticket to the ShiftId)
+            // 5. Mark the ticket as used and lock in the Audit Trail
+            journey.Status = "Used";
+            journey.RedeemedAt = DateTime.UtcNow;
 
+            // THIS line is what makes your dynamic ticket counter work on the summary screen!
+            journey.IssuedDuringShiftId = shift.Id;
+
+            _context.Journeys.Update(journey);
             await _context.SaveChangesAsync();
 
-            // 4. Return success and the base fare amount (hardcoded to 15.00 for this example, but you'd pull it from the Ticket/Route)
+            // 6. Return success and the actual fare amount paid for this journey
             return Ok(new
             {
                 message = "Ticket Validated",
-                fareAmount = 15.00m
+                fareAmount = journey.TotalCost
             });
         }
+
+        //[HttpPost("cash-sale")]
+        //public async Task<IActionResult> RecordCashSale([FromBody] CashSaleRequest request)
+        //{
+        //    var shift = await _context.ConductorShifts
+        //        .Include(s => s.Route)
+        //        .FirstOrDefaultAsync(s => s.Id == request.ShiftId);
+
+        //    if (shift == null || shift.ShiftEndTime != null)
+        //    {
+        //        return BadRequest(new { message = "Invalid or closed shift." });
+        //    }
+
+        //    decimal fareTotal = shift.Route.BaseFare * request.PassengerCount;
+        //    shift.TotalCashCollected += fareTotal;
+
+        //    // NEW: Generate the physical tickets for the slip machine
+        //    var issuedTickets = new List<PrintedTicketDto>();
+
+        //    for (int i = 0; i < request.PassengerCount; i++)
+        //    {
+        //        // 1. Create a unique ID for the printed slip
+        //        string uniqueTicketId = $"CASH-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}";
+
+        //        // 2. Save it to your database so inspectors can verify it later
+        //        var newTicket = new Ticket
+        //        {
+        //            QRCodeData = uniqueTicketId,
+        //            Status = Models.Enums.TicketStatus.Used, // Marked as 'Used' instantly since they are boarding right now
+        //                                                     // Optional: You could link it to the ShiftId here if your Ticket model supports it
+        //        };
+        //        _context.Tickets.Add(newTicket);
+
+        //        // 3. Add the details to the response for the Bluetooth printer
+        //        issuedTickets.Add(new PrintedTicketDto
+        //        {
+        //            TicketId = uniqueTicketId,
+        //            RouteName = shift.Route.RouteName,
+        //            FarePaid = shift.Route.BaseFare,
+        //            IssuedAt = DateTime.UtcNow
+        //        });
+        //    }
+
+        //    _context.ConductorShifts.Update(shift);
+        //    await _context.SaveChangesAsync(); // Saves the cash total AND the new tickets
+
+        //    // Return everything to Android
+        //    return Ok(new
+        //    {
+        //        message = "Cash sale recorded successfully.",
+        //        amountAdded = fareTotal,
+        //        newTotal = shift.TotalCashCollected,
+        //        receipts = issuedTickets // The printer data!
+        //    });
+        //}
 
         [HttpPost("cash-sale")]
         public async Task<IActionResult> RecordCashSale([FromBody] CashSaleRequest request)
@@ -119,49 +189,91 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 return BadRequest(new { message = "Invalid or closed shift." });
             }
 
+            // Calculate total fare
             decimal fareTotal = shift.Route.BaseFare * request.PassengerCount;
             shift.TotalCashCollected += fareTotal;
 
-            // NEW: Generate the physical tickets for the slip machine
             var issuedTickets = new List<PrintedTicketDto>();
 
             for (int i = 0; i < request.PassengerCount; i++)
             {
-                // 1. Create a unique ID for the printed slip
-                string uniqueTicketId = $"CASH-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}";
+                // 1. Generate the Guid for the database
+                Guid newTicketGuid = Guid.NewGuid();
 
-                // 2. Save it to your database so inspectors can verify it later
-                var newTicket = new Ticket
+                // 2. Create a short, readable version for the printed slip
+                string displayTicketId = $"CASH-{newTicketGuid.ToString().Substring(0, 8).ToUpper()}";
+
+                // 3. Create the anonymous Journey mapping to your EXACT model properties
+                var walkOnJourney = new Journey
                 {
-                    QRCodeData = uniqueTicketId,
-                    Status = Models.Enums.TicketStatus.Used, // Marked as 'Used' instantly since they are boarding right now
-                                                             // Optional: You could link it to the ShiftId here if your Ticket model supports it
+                    TicketReference = newTicketGuid,   // Maps to your Guid property
+                    Status = "Used",                   // Your model uses a string for Status
+                    TotalCost = shift.Route.BaseFare,  // Maps to your TotalCost property
+                    UserId = null,                     // Leaves it anonymous
+                    IssuedDuringShiftId = shift.Id,    // Locks in the audit trail!
+                    RedeemedAt = DateTime.UtcNow,      // Marks it used immediately
+                    TotalDurationMinutes = 0           // Default for cash walk-ons
                 };
-                _context.Tickets.Add(newTicket);
 
-                // 3. Add the details to the response for the Bluetooth printer
+                _context.Journeys.Add(walkOnJourney);
+
+                // 4. Send the data to the Bluetooth printer
                 issuedTickets.Add(new PrintedTicketDto
                 {
-                    TicketId = uniqueTicketId,
+                    TicketId = displayTicketId,
                     RouteName = shift.Route.RouteName,
                     FarePaid = shift.Route.BaseFare,
-                    IssuedAt = DateTime.UtcNow
+                    IssuedAt = walkOnJourney.RedeemedAt.Value
                 });
             }
 
             _context.ConductorShifts.Update(shift);
-            await _context.SaveChangesAsync(); // Saves the cash total AND the new tickets
 
-            // Return everything to Android
+            // Saves the updated cash total AND the new anonymous Journeys
+            await _context.SaveChangesAsync();
+
             return Ok(new
             {
                 message = "Cash sale recorded successfully.",
                 amountAdded = fareTotal,
                 newTotal = shift.TotalCashCollected,
-                receipts = issuedTickets // The printer data!
+                receipts = issuedTickets
             });
         }
 
+        // Get Shift Summary
+        [HttpGet("summary")]
+        public async Task<IActionResult> GetShiftSummary()
+        {
+            var conductorId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // Find the active shift
+            var activeShift = await _context.ConductorShifts
+                .Include(cs => cs.Bus)
+                .Include(cs => cs.Route)
+                .FirstOrDefaultAsync(cs => cs.ConductorId == conductorId && cs.ShiftEndTime == null);
+
+            if (activeShift == null)
+                return BadRequest(new { message = "No active shift found." });
+
+            // Calculate live ticket count
+            int digitalScanCount = await _context.Journeys
+                .CountAsync(j => j.IssuedDuringShiftId == activeShift.Id && j.UserId != null);
+
+            return Ok(new
+            {
+                message = "Live summary fetched.",
+                shiftSummary = new
+                {
+                    shiftId = activeShift.Id,
+                    busFleetNumber = activeShift.Bus.FleetNumber,
+                    routeName = activeShift.Route.RouteName,
+                    startTime = activeShift.ShiftStartTime,
+                    totalCashHandover = activeShift.TotalCashCollected,
+                    digitalTicketsScanned = digitalScanCount
+                }
+            });
+        }
 
         [HttpPost("end")]
         public async Task<IActionResult> EndShift()
@@ -173,10 +285,10 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 return Unauthorized(new { message = "Invalid user token." });
             }
 
-            // 2. Find the conductor's currently active shift (ShiftEndTime is null)
+            // 2. Find the conductor's currently active shift
             var activeShift = await _context.ConductorShifts
-                .Include(cs => cs.Bus) // Optional: Bring in Bus data for the summary screen
-                .Include(cs => cs.Route) // Optional: Bring in Route data for the summary
+                .Include(cs => cs.Bus)
+                .Include(cs => cs.Route)
                 .FirstOrDefaultAsync(cs => cs.ConductorId == conductorId && cs.ShiftEndTime == null);
 
             if (activeShift == null)
@@ -187,26 +299,30 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // 3. Clock them out
             activeShift.ShiftEndTime = DateTime.UtcNow;
 
-            // Note: If you add a TicketScans table later, you would count them here:
-            // var scanCount = await _context.TicketScans.CountAsync(t => t.ShiftId == activeShift.Id);
+            // 4. GET THE ACTUAL TICKET COUNT FROM JOURNEYS
+            // We count how many Journeys are linked to this shift WHERE the user had an app account (UserId != null).
+            int digitalScanCount = await _context.Journeys
+                .CountAsync(j => j.IssuedDuringShiftId == activeShift.Id && j.UserId != null);
 
-            // 4. Save changes to the database
+            // (Optional: You could also count cash walk-ons with j.UserId == null if you wanted to display that!)
+
+            // 5. Save changes to the database
             _context.ConductorShifts.Update(activeShift);
             await _context.SaveChangesAsync();
 
-            // 5. Return the final summary data so the Android app can display the Shift Summary screen
+            // 6. Return the final summary data
             return Ok(new
             {
                 message = "Shift ended successfully.",
                 shiftSummary = new
                 {
                     shiftId = activeShift.Id,
-                    busFleetNumber = activeShift.Bus.FleetNumber,
-                    routeName = activeShift.Route.RouteName,
+                    busFleetNumber = activeShift.Bus.FleetNumber, // Null safety added
+                    routeName = activeShift.Route.RouteName,      // Null safety added
                     startTime = activeShift.ShiftStartTime,
                     endTime = activeShift.ShiftEndTime,
-                    totalCashHandover = activeShift.TotalCashCollected // This was initialized to 0 in StartShift
-                                                                       // digitalTicketsScanned = scanCount // Pass this back once we build the scanning logic!
+                    totalCashHandover = activeShift.TotalCashCollected,
+                    digitalTicketsScanned = digitalScanCount // Dynamic count injected here!
                 }
             });
         }

@@ -1,4 +1,6 @@
-﻿namespace UrbanLink_CRUD.Models.Entities.Transit
+﻿using Microsoft.Identity.Client;
+
+namespace UrbanLink_CRUD.Models.Entities.Transit
 {
     public class ConductorShift
     {
@@ -15,6 +17,8 @@
 
         // Financial tracking for walk-on passengers
         public decimal TotalCashCollected { get; set; }
+
+        public int DigitalTicketScanned { get; set; } = 0;
 
         // Add this at the bottom:
         public ICollection<IncidentReport> IncidentReports { get; set; }

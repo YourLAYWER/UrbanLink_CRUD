@@ -5,10 +5,10 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
     public class Journey
     {
         public int Id { get; set; }
-        public int UserId { get; set; }
+        public int? UserId { get; set; }
         // CHANGED: Now points to the physical Stop IDs
-        public int StartStopId { get; set; }
-        public int EndStopId { get; set; }
+        public int? StartStopId { get; set; }
+        public int? EndStopId { get; set; }
 
         public decimal TotalCost { get; set; }
 
@@ -20,9 +20,14 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
         public Guid TicketReference { get; set; } = Guid.NewGuid();
         public DateTime? RedeemedAt { get; set; }
 
+        // Links walk-on cash journeys to the conductor's shift
+        public int? IssuedDuringShiftId { get; set; }
+
         public virtual ICollection<JourneyLeg> Legs { get; set; } = new List<JourneyLeg>();
         public virtual User? User { get; set; }
         public virtual Stop? StartStop { get; set; }
         public virtual Stop? EndStop { get; set; }
+
+        public virtual ConductorShift? IssuedDuringShift { get; set; }
     }
 }
