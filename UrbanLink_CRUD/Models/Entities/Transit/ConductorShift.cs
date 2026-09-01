@@ -6,21 +6,24 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
     {
         public int Id { get; set; }
 
-        public string ConductorId { get; set; } // Links to your Identity User
-        public int BusId { get; set; }          // Which bus are they in?
-        public Bus Bus {  get; set; }
-        public int RouteId { get; set; }        // Which route are they driving?
-        public TransitRoute Route { get; set; }
+        public int ConductorId { get; set; }
+        public int BusId { get; set; }
+        public virtual Bus Bus { get; set; }
+
+        public int RouteId { get; set; }
+        public virtual TransitRoute Route { get; set; }
 
         public DateTime ShiftStartTime { get; set; }
-        public DateTime? ShiftEndTime { get; set; } // Null until they clock out
+        public DateTime? ShiftEndTime { get; set; }
 
-        // Financial tracking for walk-on passengers
         public decimal TotalCashCollected { get; set; }
 
+        // Retained based on your structure, though dynamic counting is still possible via the Journeys table
         public int DigitalTicketScanned { get; set; } = 0;
 
-        // Add this at the bottom:
-        public ICollection<IncidentReport> IncidentReports { get; set; }
+        public virtual ICollection<IncidentReport> IncidentReports { get; set; } = new List<IncidentReport>();
+
+        // THE AUDIT TRAIL: Links this shift directly to all anonymous cash walk-ons
+        public virtual ICollection<CashJourney> CashJourneys { get; set; } = new List<CashJourney>();
     }
 }
