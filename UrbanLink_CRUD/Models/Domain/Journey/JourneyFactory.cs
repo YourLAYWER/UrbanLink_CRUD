@@ -19,12 +19,13 @@ namespace UrbanLink_CRUD.Models.Domain.Journey
                 TicketReference = Guid.NewGuid()
             };
         }
-        public CashJourney CreateCashJourney(int shiftId, decimal fareAmount)
+        public CashJourney CreateCashJourney(int shiftId, decimal fareAmount, int endStopId)
         {
             return new CashJourney
             {
                 ShiftID = shiftId,
                 TotalCost = fareAmount,
+                EndStopID = endStopId,
                 Status = JourneyStatus.Completed, // Cash journeys are instantly completed upon printing
                 CreatedAt = DateTime.UtcNow,
                 RedeemedAt = DateTime.UtcNow, // Redeemed the moment it's printed

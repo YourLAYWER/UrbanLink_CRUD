@@ -22,22 +22,17 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         [HttpGet("buses/available")]
         public async Task<IActionResult> GetAvailableBuses()
         {
-            // 1. Find the IDs of all buses currently being driven (ShiftEndTime is null)
-            var busesOnActiveShifts = await _context.ConductorShifts
-                .Where(cs => cs.ShiftEndTime == null)
-                .Select(cs => cs.BusId)
-                .ToListAsync();
-
-            // 2. Fetch buses that are structurally sound AND parked at the depot
+            // A single trip to the database!
             var availableBuses = await _context.Buses
-            .Where(b => b.Status == BusStatus.Active && !busesOnActiveShifts.Contains(b.Id))
-            .Select(b => new
-            {
-                id = b.Id,
-                fleetNumber = b.FleetNumber,
-                label = $"{b.FleetNumber} ({b.LicensePlate})"
-            })
-            .ToListAsync();
+                .Where(b => b.Status == BusStatus.Active &&
+                           !_context.ConductorShifts.Any(cs => cs.BusId == b.Id && cs.ShiftEndTime == null))
+                .Select(b => new
+                {
+                    id = b.Id,
+                    fleetNumber = b.FleetNumber,
+                    label = $"{b.FleetNumber} ({b.LicensePlate})"
+                })
+                .ToListAsync();
 
             return Ok(new { data = availableBuses });
         }

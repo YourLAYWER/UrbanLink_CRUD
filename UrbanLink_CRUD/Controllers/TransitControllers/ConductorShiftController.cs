@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using UrbanLink_CRUD.Models.Data;
+using UrbanLink_CRUD.Models.Domain.Journey;
 using UrbanLink_CRUD.Models.Dtos.TransitDtos;
 using UrbanLink_CRUD.Models.Entities.Transit;
 using UrbanLink_CRUD.Models.Enums;
@@ -14,10 +15,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
     public class ConductorShiftController : ControllerBase
     {
         private readonly ULDBContext _context;
+        private readonly IJourneyFactory _journeyFactory;
 
-        public ConductorShiftController(ULDBContext context)
+        public ConductorShiftController(ULDBContext context, IJourneyFactory journeyFactory)
         {
             _context = context;
+            _journeyFactory = journeyFactory;
         }
 
         [HttpPost("start")]
@@ -93,33 +96,38 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         public async Task<IActionResult> RecordCashSale([FromBody] CashSaleRequest request)
         {
             var shift = await _context.ConductorShifts
-                .Include(s => s.Route)
-                .FirstOrDefaultAsync(s => s.Id == request.ShiftId);
+        .Include(s => s.Route)
+        .FirstOrDefaultAsync(s => s.Id == request.ShiftId);
 
             if (shift == null || shift.ShiftEndTime != null)
                 return BadRequest(new { message = "Invalid or closed shift." });
 
+            // 1. Find the Terminal (Last) Stop of this specific Route
+            // Logic: Find a segment where its Destination is NEVER used as an Origin on this same route.
+            var terminalSegment = await _context.RouteSegments
+                .FirstOrDefaultAsync(rs => rs.RouteId == shift.RouteId &&
+                    !_context.RouteSegments.Any(other => other.RouteId == shift.RouteId && other.OriginStopId == rs.DestinationStopId));
+
+            if (terminalSegment == null)
+                return BadRequest(new { message = "Route configuration error: Cannot determine terminal stop." });
+
+            int endStopId = terminalSegment.DestinationStopId;
+
+            // 2. Calculate Fares
             decimal fareTotal = shift.Route.BaseFare * request.PassengerCount;
             shift.TotalCashCollected += fareTotal;
 
             var issuedTickets = new List<PrintedTicketDto>();
 
+            // 3. Issue the tickets
             for (int i = 0; i < request.PassengerCount; i++)
             {
-                Guid newTicketGuid = Guid.NewGuid();
-                string displayTicketId = $"CASH-{newTicketGuid.ToString().Substring(0, 8).ToUpper()}";
-
-                // Instantiates the derived TPT entity directly
-                var walkOnJourney = new CashJourney
-                {
-                    TicketReference = newTicketGuid,
-                    Status = JourneyStatus.Completed,
-                    TotalCost = shift.Route.BaseFare,
-                    ShiftID = shift.Id,
-                    RedeemedAt = DateTime.UtcNow
-                };
+                // Use the factory, passing in the dynamically found terminal stop
+                var walkOnJourney = _journeyFactory.CreateCashJourney(shift.Id, shift.Route.BaseFare, endStopId);
 
                 _context.Journeys.Add(walkOnJourney);
+
+                string displayTicketId = $"CASH-{walkOnJourney.TicketReference.ToString().Substring(0, 8).ToUpper()}";
 
                 issuedTickets.Add(new PrintedTicketDto
                 {
@@ -131,9 +139,17 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             }
 
             _context.ConductorShifts.Update(shift);
+
+            // Save everything. The FK constraints are now perfectly satisfied!
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Cash sale recorded successfully.", amountAdded = fareTotal, newTotal = shift.TotalCashCollected, receipts = issuedTickets });
+            return Ok(new
+            {
+                message = "Cash sale recorded successfully.",
+                amountAdded = fareTotal,
+                newTotal = shift.TotalCashCollected,
+                receipts = issuedTickets
+            });
         }
 
         [HttpGet("summary")]
