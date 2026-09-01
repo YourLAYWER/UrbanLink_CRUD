@@ -1,10 +1,12 @@
-﻿namespace UrbanLink_CRUD.Models.Entities.Transit
+﻿using UrbanLink_CRUD.Models.Enums;
+
+namespace UrbanLink_CRUD.Models.Entities.Transit
 {
     public class TransitProvider
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty; // e.g., "Bus", "Train", "Tram"
+        public TransitType Type { get; set; }// e.g., "Bus", "Train", "Tram"
         public string APIEndpoint { get; set; } = string.Empty; // Endpoint for fetching transit data
 
 

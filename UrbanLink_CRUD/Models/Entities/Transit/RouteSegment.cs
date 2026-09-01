@@ -7,17 +7,13 @@
         // Foreign Keys to the Stop table
         public int OriginStopId { get; set; }
         public int DestinationStopId { get; set; }
-
-        // Foreign Key to the Route table
         public int RouteId { get; set; }
-
         public int TravelTimeMinutes { get; set; }
 
         // Navigation Properties
         public virtual Stop? OriginStop { get; set; }
         public virtual Stop? DestinationStop { get; set; }
         public virtual TransitRoute? Route { get; set; }
-        //Connects RouteSegment to the RouteStop join table
         public virtual ICollection<RouteStop> RouteStops { get; set; } = new List<RouteStop>();
     }
 }

@@ -8,9 +8,7 @@
         //Using double for precision in latitude and longitude
         public double Latitude { get; set; }
         public double Longitude { get; set; }
-
         public bool IsTransferHub { get; set; }
-
         public bool IsActive { get; set; } = true;
 
         public virtual ICollection<RouteStop>? RouteStops { get; set; } = new List<RouteStop>();

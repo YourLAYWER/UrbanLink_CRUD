@@ -53,9 +53,9 @@ namespace UrbanLink_CRUD.Models.Data
             if (!context.TransitProviders.Any())
             {
                 context.TransitProviders.AddRange(
-                    new TransitProvider { Name = "Algoa Bus", Type = "Bus", APIEndpoint = "" },
-                    new TransitProvider { Name = "PRASA", Type = "Rail", APIEndpoint = "" },
-                    new TransitProvider { Name = "Gqeberha Municipal Bus", Type = "Bus", APIEndpoint = "" }
+                    new TransitProvider { Name = "Algoa Bus", Type = TransitType.Bus, APIEndpoint = "" },
+                    new TransitProvider { Name = "PRASA", Type = TransitType.Train, APIEndpoint = "" },
+                    new TransitProvider { Name = "Gqeberha Municipal Bus", Type = TransitType.Bus, APIEndpoint = "" }
                 );
                 context.SaveChanges();
             }
@@ -133,7 +133,7 @@ namespace UrbanLink_CRUD.Models.Data
             // Safety check just in case the providers haven't seeded yet
             if (provider == null)
             {
-                provider = new TransitProvider { Name = "Algoa Bus", Type = "Bus", APIEndpoint = "" };
+                provider = new TransitProvider { Name = "Algoa Bus", Type = TransitType.Bus, APIEndpoint = "" };
                 context.TransitProviders.Add(provider);
                 context.SaveChanges();
             }
@@ -146,7 +146,7 @@ namespace UrbanLink_CRUD.Models.Data
         new TransitRoute
         {
             RouteName = "Route 1: Greenacres to Central",
-            TransportType = "Bus",
+            TransportType = TransitType.Bus,
             BaseFare = 15.00m,
             ProviderId = provider.Id, // Links directly to Algoa Bus!
             Schedules = new List<RouteSchedule>
@@ -170,7 +170,7 @@ namespace UrbanLink_CRUD.Models.Data
         new TransitRoute
         {
             RouteName = "Route 2: Central to NMU South",
-            TransportType = "Bus",
+            TransportType = TransitType.Bus,
             BaseFare = 15.00m,
             ProviderId = provider.Id, // Links directly to Algoa Bus!
             Schedules = new List<RouteSchedule>
@@ -223,27 +223,6 @@ namespace UrbanLink_CRUD.Models.Data
 
             context.RouteStops.AddRange(routeStops);
             context.SaveChanges();
-        }
-
-        public static void SeedTickets(ULDBContext context)
-        {
-            if (!context.Tickets.Any())
-            {
-                context.Tickets.AddRange(
-                    new Ticket
-                    {
-                        QRCodeData = "QR-1001",
-                        Status = TicketStatus.Active
-                    },
-                    new Ticket
-                    {
-                        QRCodeData = "QR-1002",
-                        Status = TicketStatus.Active
-                    }
-                );
-
-                context.SaveChanges();
-            }
         }
     }
 }

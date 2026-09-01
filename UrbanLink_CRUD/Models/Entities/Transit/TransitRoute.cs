@@ -1,10 +1,12 @@
-﻿namespace UrbanLink_CRUD.Models.Entities.Transit
+﻿using UrbanLink_CRUD.Models.Enums;
+
+namespace UrbanLink_CRUD.Models.Entities.Transit
 {
     public class TransitRoute
     {
         public int Id { get; set; }
         public string RouteName { get; set; } = string.Empty; // e.g., "Route 10"
-        public string TransportType { get; set; } = string.Empty; // "Bus", "Train"
+        public TransitType TransportType { get; set; } // "Bus", "Train"
         public decimal BaseFare { get; set; }
         public int ProviderId { get; set; }
 

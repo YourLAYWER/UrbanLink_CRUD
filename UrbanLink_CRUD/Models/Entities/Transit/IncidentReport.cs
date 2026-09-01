@@ -1,4 +1,6 @@
-﻿namespace UrbanLink_CRUD.Models.Entities.Transit
+﻿using UrbanLink_CRUD.Models.Enums;
+
+namespace UrbanLink_CRUD.Models.Entities.Transit
 {
     public class IncidentReport
     {
@@ -14,7 +16,7 @@
         public bool IsEmergency { get; set; }
 
         // e.g., "Engine Trouble", "Passenger Dispute", or "SOS"
-        public string Category { get; set; }
+        public IncidentCategory Category { get; set; }
 
         // The optional text/voice note
         public string Description { get; set; }
@@ -24,6 +26,6 @@
         public double Longitude { get; set; }
 
         // E.g., "Open", "Investigating", "Resolved"
-        public string Status { get; set; }
+        public IncidentStatus Status { get; set; }
     }
 }
