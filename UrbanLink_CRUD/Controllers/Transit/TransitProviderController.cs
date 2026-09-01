@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UrbanLink_CRUD.Models.Data;
 using UrbanLink_CRUD.Models.Entities.Transit;
+using UrbanLink_CRUD.Models.Enums;
 
 namespace UrbanLink_CRUD.Controllers.Transit
 {
@@ -30,10 +31,18 @@ namespace UrbanLink_CRUD.Controllers.Transit
         [HttpGet("type/{transportType}")]
         public async Task<IActionResult> GetProvidersByType(string transportType)
         {
+            // 1. Safely parse the URL string into the strong TransitType Enum (true ignores case)
+            if (!Enum.TryParse<TransitType>(transportType, true, out var parsedTransitType))
+            {
+                return BadRequest(new
+                {
+                    message = $"Invalid transport type: {transportType}. Valid options are Bus, Train, Tram, Ferry, Subway."
+                });
+            }
+
+            // 2. Query the database directly comparing Enum to Enum!
             var providers = await _context.TransitProviders
-                // Filter by the type the Android app requested ("Bus" or "Rail")
-                .Where(p => p.Type.ToLower() == transportType.ToLower())
-                // Lightweight projection for the UI
+                .Where(p => p.Type == parsedTransitType)
                 .Select(p => new
                 {
                     Id = p.Id,
@@ -44,7 +53,8 @@ namespace UrbanLink_CRUD.Controllers.Transit
 
             if (providers.Count == 0)
             {
-                return NotFound(new { message = $"No providers found for transport type: {transportType}" });
+                // Using the parsed enum here ensures proper formatting (e.g., "Bus" instead of "bus")
+                return NotFound(new { message = $"No providers found for transport type: {parsedTransitType}" });
             }
 
             return Ok(providers);

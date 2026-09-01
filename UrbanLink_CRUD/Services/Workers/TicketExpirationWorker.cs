@@ -1,6 +1,7 @@
 ﻿
 using Microsoft.EntityFrameworkCore;
 using UrbanLink_CRUD.Models.Data;
+using UrbanLink_CRUD.Models.Enums;
 
 namespace UrbanLink_CRUD.Services.Workers
 {
@@ -32,10 +33,10 @@ namespace UrbanLink_CRUD.Services.Workers
                         // 2. Define the cut-off time (24 hours ago)
                         var expirationThreshold = DateTime.UtcNow.AddHours(-24);
 
-                        // 3. Bulk Update: Instantly change the status in SQL Server
+                        // 3. Bulk Update: Instantly change the status using the strong Enum
                         int expiredCount = await context.Journeys
-                            .Where(j => j.Status == "ACTIVE" && j.CreatedAt < expirationThreshold)
-                            .ExecuteUpdateAsync(s => s.SetProperty(j => j.Status, "EXPIRED"), stoppingToken);
+                            .Where(j => j.Status == JourneyStatus.Active && j.CreatedAt < expirationThreshold)
+                            .ExecuteUpdateAsync(s => s.SetProperty(j => j.Status, JourneyStatus.Expired), stoppingToken);
 
                         if (expiredCount > 0)
                         {

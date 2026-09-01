@@ -4,9 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Timers;
 using UrbanLink_CRUD.Models.Data;
+using UrbanLink_CRUD.Models.Domain.Fare;
+using UrbanLink_CRUD.Models.Domain.Journey;
 using UrbanLink_CRUD.Models.Dtos.TransitDtos;
 using UrbanLink_CRUD.Models.Entities.Transit;
+using UrbanLink_CRUD.Models.Enums;
 using UrbanLink_CRUD.Services.RoutingLogic;
+using static UrbanLink_CRUD.Services.RoutingLogic.RoutingContex;
 
 namespace UrbanLink_CRUD.Controllers.TransitControllers
 {
@@ -15,14 +19,18 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
     public class JourneyController : ControllerBase
     {
         private readonly ULDBContext _context;
-
-        // 1. Updated to use the Interface rather than the nested class wrapper
         private readonly ITransitRoutingService _routingService;
+        private readonly IFareStrategyFactory _fareFactory;
+        private readonly IRoutingStrategyFactory _routingFactory;
+        private readonly IJourneyFactory _journeyFactory;
 
-        public JourneyController(ULDBContext context, ITransitRoutingService routingService)
+        public JourneyController(ULDBContext context, ITransitRoutingService routingService, IFareStrategyFactory fareFactory, IRoutingStrategyFactory routingFactory, IJourneyFactory journeyFactory)
         {
             _context = context;
             _routingService = routingService;
+            _fareFactory = fareFactory;
+            _routingFactory = routingFactory;
+            _journeyFactory = journeyFactory;
         }
 
         [HttpGet]
@@ -37,37 +45,34 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         public async Task<IActionResult> GetJourneyHistory()
         {
             // 1. Extract the secure User ID from the JWT Token
-            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (userIdString == null) return Unauthorized();
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
             int userId = int.Parse(userIdString);
 
-            // 2. Query the database using Entity Framework
-            var history = await _context.Journeys
-                // Include the physical Stops so we can access their Names
-                .Include(j => j.StartStop)
-                .Include(j => j.EndStop)
-                .Where(j => j.UserId == userId)
-                .OrderByDescending(j => j.CreatedAt) // Newest trips at the top!
-                .Select(j => new
-                {
-                    ticketReference = j.TicketReference,
+            // 2. Query the normalized UserJourneys table using LINQ syntax
+            var history = await (from uj in _context.UserJourneys
+                                 join startStop in _context.Stops on uj.StartStopID equals startStop.Id
+                                 join endStop in _context.Stops on uj.EndStopID equals endStop.Id
+                                 where uj.UserID == userId
+                                 orderby uj.CreatedAt descending
+                                 select new
+                                 {
+                                     ticketReference = uj.TicketReference,
 
-                    // Format the date exactly how your Android XML expects it
-                    date = j.CreatedAt.ToString("dd MMM yyyy • HH:mm"),
+                                     // Format the date exactly how your Android XML expects it
+                                     date = uj.CreatedAt.ToString("dd MMM yyyy • HH:mm"),
 
-                    // Raw number, we can append the 'R' on the Android side
-                    cost = j.TotalCost,
+                                     // Raw number, appended on the Android side
+                                     cost = uj.TotalCost,
 
-                    // Dynamically build the "A -> B" string
-                    routeSummary = $"{j.StartStop.Name} → {j.EndStop.Name}",
+                                     // Dynamically build the "A -> B" string using the joined tables
+                                     routeSummary = $"{startStop.Name} → {endStop.Name}",
 
-                    // Force uppercase to match your XML design ("REDEEMED", "ACTIVE")
-                    status = j.Status.ToUpper()
-                })
-                .ToListAsync();
+                                     // Convert the strong Enum back to a string and force uppercase
+                                     status = uj.Status.ToString().ToUpper()
+                                 }).ToListAsync();
 
-            // 3. Return the array to the app!
-            // If they have no trips, this safely returns an empty array [] instead of a 404
+            // 3. Return the array to the app (returns [] if empty)
             return Ok(history);
         }
 
@@ -79,46 +84,47 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (request.StartStopId == request.EndStopId)
                 return BadRequest(new { message = "Start and destination cannot be the same." });
 
-            // 1. Get the exact current DateTime for the user
-            // var currentDateTime = DateTime.Now;
-            var currentDateTime = new DateTime(2026, 8, 24, 10, 0, 0);
+            // Use live server time instead of the hardcoded test date
+            var currentDateTime = DateTime.UtcNow;
 
-            // 2. Run your fantastic routing engine using the FULL DateTime context
-            var routingResult = _routingService.ComputeFastestRoute(request.StartStopId, request.EndStopId, currentDateTime);
+            // 1. STRATEGY EXECUTION: Route based on user preference (Fastest, Cheapest, etc.)
+            var routingResult = _routingService.ComputeRoute(
+                startStopId: request.StartStopId,
+                targetStopId: request.EndStopId,
+                userDepartureTime: currentDateTime,
+                preference: "fastest" //
+            );
 
-            // -1 indicates no path was found
             if (routingResult.TotalTimeMinutes == -1 || !routingResult.Legs.Any())
                 return NotFound(new { message = "No valid route found between these stops." });
 
-            // 3. Tally up the total base cost from all the legs
+            // 2. Get the raw base cost from the selected route
             decimal totalBaseCost = routingResult.Legs.Sum(leg => leg.LegFare);
+
+            // ==========================================
+            // STRATEGY EXECUTION: Dynamic Fare Pricing
+            // ==========================================
+            string userProfile = User.FindFirstValue(ClaimTypes.Role) ?? "Standard";
+
+            var fareContext = new FareCalculationContext(totalBaseCost, currentDateTime, userProfile);
+            var fareStrategy = _fareFactory.GetStrategy(fareContext);
+            decimal finalFare = fareStrategy.CalculateFare(fareContext);
+
+            // ==========================================
+            // BACKWARD MATH LOGIC (Unchanged)
+            // ==========================================
+            var finalArrivalTime = currentDateTime.AddMinutes(routingResult.TotalTimeMinutes);
+            int physicalTravelTime = routingResult.Legs.Sum(l => l.LegDurationMinutes);
+            int totalTransfers = routingResult.Legs.Count - 1;
+            int transferPenalties = totalTransfers > 0 ? (totalTransfers * 10) : 0;
+            var currentLegBoardingTime = finalArrivalTime.AddMinutes(-(physicalTravelTime + transferPenalties));
 
             var responseSegments = new List<RouteSegmentDto>();
 
-            // ==========================================
-            // BACKWARD MATH LOGIC
-            // ==========================================
-            // A. Calculate the perfect final arrival time (Current Time + Total Dijkstra Cost)
-            var finalArrivalTime = currentDateTime.AddMinutes(routingResult.TotalTimeMinutes);
-
-            // B. Sum up the physical travel time (time actually spent moving on buses)
-            int physicalTravelTime = routingResult.Legs.Sum(l => l.LegDurationMinutes);
-
-            // C. Calculate transfer penalties (10 mins per transfer based on your algorithm)
-            int totalTransfers = routingResult.Legs.Count - 1;
-            int transferPenalties = totalTransfers > 0 ? (totalTransfers * 10) : 0;
-
-            // D. Work backward to find the EXACT time they step onto the first bus!
-            var currentLegBoardingTime = finalArrivalTime.AddMinutes(-(physicalTravelTime + transferPenalties));
-
-            // 4. Translate the raw IDs into human-readable data for Android
             foreach (var leg in routingResult.Legs)
             {
-                // Fetch the actual names from the database
                 var startStop = await _context.Stops.FindAsync(leg.StartStopId);
                 var routeInfo = await _context.TransitRoutes.FindAsync(leg.RouteId);
-
-                // Calculate when they get off THIS specific bus
                 var legArrivalTime = currentLegBoardingTime.AddMinutes(leg.LegDurationMinutes);
 
                 responseSegments.Add(new RouteSegmentDto
@@ -126,15 +132,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                     StopId = leg.StartStopId,
                     StopName = startStop?.Name ?? "Unknown Stop",
                     TransitLine = routeInfo?.RouteName ?? "Unknown Route",
-                    // This shows the time they board this specific segment
                     ArrivalTime = currentLegBoardingTime.ToString("HH:mm")
                 });
 
-                // Setup the boarding time for the NEXT leg (leg arrival + 10 min transfer penalty)
                 currentLegBoardingTime = legArrivalTime.AddMinutes(10);
             }
 
-            // 5. Add the final destination node to the end of the timeline
             var finalStop = await _context.Stops.FindAsync(request.EndStopId);
             responseSegments.Add(new RouteSegmentDto
             {
@@ -144,10 +147,10 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 ArrivalTime = finalArrivalTime.ToString("HH:mm")
             });
 
-            // 6. Package it all up for Android!
             var response = new RouteCalculateResponse
             {
                 BaseCost = totalBaseCost,
+                FinalFare = finalFare,
                 EstimatedDurationMinutes = routingResult.TotalTimeMinutes,
                 Segments = responseSegments
             };
@@ -157,85 +160,51 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
         [HttpPost("book")]
         [Authorize]
-        public IActionResult BookJourney([FromBody] BookingRequestDto request)
+        public async Task<IActionResult> BookJourney([FromBody] BookingRequestDto request)
         {
-            // Extract Identity
-            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (userIdString == null) return Unauthorized();
-            int userId = int.Parse(userIdString);
+            // 1. Resolve the algorithm based on user preference
+            var routingStrategy = _routingFactory.GetStrategy("fastest");// Might add preference later be dynamic based on user preference or other factors
 
-            // 1. Get the current full DateTime for the user
-            // var currentDateTime = DateTime.Now;
-            var currentDateTime = new DateTime(2026, 8, 24, 10, 0, 0);
+            // 2. Execute the chosen algorithm
+            var routeContext = new RoutingContext(request.StartStopId, request.EndStopId, DateTime.UtcNow);
+            var routingResult = _routingService.ComputeRoute(
+                startStopId: request.StartStopId,
+                targetStopId: request.EndStopId,
+                userDepartureTime: DateTime.UtcNow,
+                preference: "fastest" // Pass the user's choice here
+            );
 
-            // --- EXECUTING OUR ALGORITHM ---
-            // Pass the full currentDateTime instead of just the TimeOfDay
-            var routingResult = _routingService.ComputeFastestRoute(request.StartStopId, request.EndStopId, currentDateTime);
 
-            // Handle the "No Route Found" scenario gracefully
-            if (routingResult.TotalTimeMinutes == -1 || routingResult.Legs.Count == 0)
-            {
-                return BadRequest(new { message = "No valid route found between these locations." });
-            }
+            if (routingResult.TotalTimeMinutes == -1)
+                return BadRequest(new { message = "Invalid route." });
 
-            // Calculate the total fare using the read-only algorithm records
-            decimal baseTotalCost = routingResult.Legs.Sum(l => l.LegFare);
+            decimal trueBaseCost = routingResult.Legs.Sum(leg => leg.LegFare);
 
-            // Apply Student/Pensioner Discounts based on JWT Role
-            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (userRole == "Student")
-            {
-                baseTotalCost *= 0.85m;
-            }
+            // 2. Extract identity and role securely from the JWT token
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userProfile = User.FindFirstValue(ClaimTypes.Role) ?? "Standard";
 
-            // A. Calculate the perfect final arrival time
-            var finalArrivalTime = currentDateTime.AddMinutes(routingResult.TotalTimeMinutes);
+            // 3. Re-run the Strategy Pattern to generate the authoritative final price
+            var fareContext = new FareCalculationContext(trueBaseCost, DateTime.UtcNow, userProfile);
+            decimal secureFinalFare = _fareFactory.GetStrategy(fareContext).CalculateFare(fareContext);
 
-            // Build the Master Journey Entity for the database
-            var journey = new Journey
-            {
-                UserId = userId,
-                StartStopId = request.StartStopId,
-                EndStopId = request.EndStopId,
-                TotalCost = baseTotalCost,
-                TotalDurationMinutes = routingResult.TotalTimeMinutes,
-                Status = "Active",
-                CreatedAt = DateTime.UtcNow,
+            // 4. Create the normalized UserJourney entity
+            var userJourney = _journeyFactory.CreateUserJourney(
+                int.Parse(userIdString),
+                request.StartStopId,
+                request.EndStopId,
+                secureFinalFare,
+                DateTime.UtcNow.AddMinutes(routingResult.TotalTimeMinutes)
+            );
 
-                // 2. Explicitly referenced the EF Core Entity namespace to prevent compiler confusion
-                Legs = new List<UrbanLink_CRUD.Models.Entities.Transit.JourneyLeg>()
-            };
-
-            // Map your algorithm's output to the EF Core Database Entities
-            int sequence = 1;
-            foreach (var algLeg in routingResult.Legs)
-            {
-                journey.Legs.Add(new UrbanLink_CRUD.Models.Entities.Transit.JourneyLeg
-                {
-                    SequenceOrder = sequence,
-                    RouteId = algLeg.RouteId,
-                    BoardingStopId = algLeg.StartStopId,
-                    DestinationStopId = algLeg.EndStopId,
-                    LegDurationMinutes = algLeg.LegDurationMinutes,
-                    LegFare = algLeg.LegFare,
-                    Status = "Active",
-                    TicketReference = Guid.NewGuid()
-                });
-                sequence++;
-            }
-
-            // Save transaction
-            _context.Journeys.Add(journey);
-            _context.SaveChanges();
+            _context.UserJourneys.Add(userJourney);
+            await _context.SaveChangesAsync();
 
             return Ok(new
             {
-                message = "Journey booked successfully.",
-                journeyId = journey.Id,
-                ticketReference = journey.TicketReference,
-                totalCost = journey.TotalCost,
-                estimatedDurationMinutes = journey.TotalDurationMinutes,
-                estimatedArrivalTime = finalArrivalTime.ToString("HH:mm")
+                message = "Journey purchased successfully",
+                ticketReference = userJourney.TicketReference,
+                amountCharged = secureFinalFare
             });
         }
 
@@ -243,17 +212,14 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         [Authorize]
         public async Task<IActionResult> UpdateTicketStatus([FromBody] UpdateTicketStatusDto request)
         {
-            // 1. Force the status to uppercase so it perfectly matches your Android UI logic
-            string newStatus = request.Status.ToUpper();
-
-            // 2. Validate that the status is one of our allowed keywords
-            var validStatuses = new[] { "ACTIVE", "REDEEMED", "EXPIRED" };
-            if (!validStatuses.Contains(newStatus))
+            // 1. Safely parse the string from Android into your strong C# Enum.
+            // The 'true' parameter makes it case-insensitive, so "COMPLETED", "completed", or "Completed" all work.
+            if (!Enum.TryParse<JourneyStatus>(request.Status, true, out var newStatus))
             {
-                return BadRequest(new { message = "Invalid status. Must be ACTIVE, REDEEMED, or EXPIRED." });
+                return BadRequest(new { message = "Invalid status. Must be Active, Completed, Cancelled, or Expired." });
             }
 
-            // 3. Find the Journey (Ticket) in the database using the unique GUID
+            // 2. Find the Journey in the database using the unique GUID
             var journey = await _context.Journeys
                 .FirstOrDefaultAsync(j => j.TicketReference == request.TicketReference);
 
@@ -262,28 +228,34 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 return NotFound(new { message = "Ticket not found." });
             }
 
-            // 4. Security Check: Prevent double-scanning!
-            if (journey.Status == "REDEEMED" && newStatus == "REDEEMED")
+            // 3. Security Check: Prevent double-scanning using the Enum!
+            if (journey.Status == JourneyStatus.Completed && newStatus == JourneyStatus.Completed)
             {
-                return BadRequest(new { message = "Ticket has already been redeemed! Do not let passenger board." });
+                return BadRequest(new { message = "Ticket has already been completed! Do not let passenger board." });
             }
 
-            if (journey.Status == "EXPIRED")
+            if (journey.Status == JourneyStatus.Expired)
             {
                 return BadRequest(new { message = "Ticket is expired and no longer valid." });
             }
 
-            // 5. Update the status and save to SQL Server
+            // 4. Update the status
             journey.Status = newStatus;
+
+            // Optional: Automatically stamp the RedeemedAt time when it gets completed
+            if (newStatus == JourneyStatus.Completed && journey.RedeemedAt == null)
+            {
+                journey.RedeemedAt = DateTime.UtcNow;
+            }
 
             await _context.SaveChangesAsync();
 
-            // 6. Return success
+            // 5. Return success, converting the Enum back to a string for the Android JSON response
             return Ok(new
             {
                 message = $"Ticket successfully marked as {newStatus}.",
                 ticketReference = journey.TicketReference,
-                newStatus = journey.Status
+                newStatus = journey.Status.ToString()
             });
         }
     }

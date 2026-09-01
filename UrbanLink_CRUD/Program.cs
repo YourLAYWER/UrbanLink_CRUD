@@ -6,6 +6,8 @@ using Microsoft.OpenApi;
 using System.Text;
 using System.Text.Json.Serialization;
 using UrbanLink_CRUD.Models.Data;
+using UrbanLink_CRUD.Models.Domain.Fare;
+using UrbanLink_CRUD.Models.Domain.Journey;
 using UrbanLink_CRUD.Services.RoutingLogic; // 1. Updated Namespace
 using UrbanLink_CRUD.Services.Workers;
 
@@ -76,6 +78,12 @@ builder.Services.AddSwaggerGen(c =>
 // Tell the application about your Database Context
 builder.Services.AddDbContext<ULDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
+
+// Thise line enables the pattern so it can be injected into any controller or service
+builder.Services.AddScoped<IFareStrategyFactory, FareStrategyFactory>();
+builder.Services.AddSingleton<IRoutingStrategyFactory, RoutingStrategyFactory>();
+builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
+builder.Services.AddSingleton<IJourneyFactory, JourneyFactory>();
 
 // --- REGISTERING THE SERVICE ---
 // 2. Updated DI Registration to use the Interface
@@ -197,6 +205,7 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "UrbanLink API v1");
     });
 }
+
 
 // Disabled UseHttpsRedirection to allow access for the Mobile application
 // app.UseHttpsRedirection();
