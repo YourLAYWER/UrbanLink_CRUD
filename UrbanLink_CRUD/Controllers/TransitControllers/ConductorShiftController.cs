@@ -99,11 +99,23 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (shift == null || shift.ShiftEndTime != null)
                 return BadRequest(new { message = "Invalid or closed shift." });
 
+            // 1. Find the Terminal (Last) Stop of this specific Route
+            var terminalSegment = await _context.RouteSegments
+                .FirstOrDefaultAsync(rs => rs.RouteId == shift.RouteId &&
+                    !_context.RouteSegments.Any(other => other.RouteId == shift.RouteId && other.OriginStopId == rs.DestinationStopId));
+
+            if (terminalSegment == null)
+                return BadRequest(new { message = "Route configuration error: Cannot determine terminal stop." });
+
+            int endStopId = terminalSegment.DestinationStopId;
+
+            // 2. Calculate Fares
             decimal fareTotal = shift.Route.BaseFare * request.PassengerCount;
             shift.TotalCashCollected += fareTotal;
 
             var issuedTickets = new List<PrintedTicketDto>();
 
+            // 3. Issue the tickets for the waist printer
             for (int i = 0; i < request.PassengerCount; i++)
             {
                 Guid newTicketGuid = Guid.NewGuid();
@@ -116,7 +128,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                     Status = JourneyStatus.Completed,
                     TotalCost = shift.Route.BaseFare,
                     ShiftID = shift.Id,
-                    RedeemedAt = DateTime.UtcNow
+                    RedeemedAt = DateTime.UtcNow,
+                    EndStopID = endStopId // Applies the dynamically calculated terminal stop
                 };
 
                 _context.Journeys.Add(walkOnJourney);
@@ -131,9 +144,17 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             }
 
             _context.ConductorShifts.Update(shift);
+
+            // 4. Save everything to SQL Server
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Cash sale recorded successfully.", amountAdded = fareTotal, newTotal = shift.TotalCashCollected, receipts = issuedTickets });
+            return Ok(new
+            {
+                message = "Cash sale recorded successfully.",
+                amountAdded = fareTotal,
+                newTotal = shift.TotalCashCollected,
+                receipts = issuedTickets
+            });
         }
 
         [HttpGet("summary")]
