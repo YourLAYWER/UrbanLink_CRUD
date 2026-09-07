@@ -62,6 +62,18 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (!Guid.TryParse(request.QRCodeData, out Guid ticketGuid))
                 return BadRequest(new { message = "Invalid QR Code format." });
 
+            // 1. Extract the authenticated conductor's ID from the JWT token claims
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int conductorId))
+                return Unauthorized(new { message = "Invalid token or user ID." });
+
+            // 2. Automatically find the active shift for this specific conductor on the backend
+            var shift = await _context.ConductorShifts
+                .FirstOrDefaultAsync(s => s.ConductorId == conductorId && s.ShiftEndTime == null);
+
+            if (shift == null)
+                return BadRequest(new { message = "No active shift found. Please start a shift first." });
+
             var journey = await _context.Journeys.FirstOrDefaultAsync(j => j.TicketReference == ticketGuid);
 
             if (journey == null)
@@ -70,10 +82,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // Uses strong Enum
             if (journey.Status != JourneyStatus.Active)
                 return BadRequest(new { message = $"Ticket Rejected: Already {journey.Status}." });
-
-            var shift = await _context.ConductorShifts.FirstOrDefaultAsync(s => s.Id == request.ShiftId);
-            if (shift == null || shift.ShiftEndTime != null)
-                return BadRequest(new { message = "Invalid or closed shift. Cannot process scan." });
 
             // Uses strong Enum
             journey.Status = JourneyStatus.Completed;
@@ -92,14 +100,20 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         [HttpPost("cash-sale")]
         public async Task<IActionResult> RecordCashSale([FromBody] CashSaleRequest request)
         {
+            // 1. Extract the authenticated conductor's ID from the JWT token claims
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int conductorId))
+                return Unauthorized(new { message = "Invalid token or user ID." });
+
+            // 2. Automatically find the active shift for this specific conductor on the backend
             var shift = await _context.ConductorShifts
                 .Include(s => s.Route)
-                .FirstOrDefaultAsync(s => s.Id == request.ShiftId);
+                .FirstOrDefaultAsync(s => s.ConductorId == conductorId && s.ShiftEndTime == null);
 
-            if (shift == null || shift.ShiftEndTime != null)
-                return BadRequest(new { message = "Invalid or closed shift." });
+            if (shift == null)
+                return BadRequest(new { message = "Invalid or closed shift. No active shift found." });
 
-            // 1. Find the Terminal (Last) Stop of this specific Route
+            // 3. Find the Terminal (Last) Stop of this specific Route
             var terminalSegment = await _context.RouteSegments
                 .FirstOrDefaultAsync(rs => rs.RouteId == shift.RouteId &&
                     !_context.RouteSegments.Any(other => other.RouteId == shift.RouteId && other.OriginStopId == rs.DestinationStopId));
@@ -109,19 +123,18 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
             int endStopId = terminalSegment.DestinationStopId;
 
-            // 2. Calculate Fares
+            // 4. Calculate Fares
             decimal fareTotal = shift.Route.BaseFare * request.PassengerCount;
             shift.TotalCashCollected += fareTotal;
 
             var issuedTickets = new List<PrintedTicketDto>();
 
-            // 3. Issue the tickets for the waist printer
+            // 5. Issue the tickets for the waist printer
             for (int i = 0; i < request.PassengerCount; i++)
             {
                 Guid newTicketGuid = Guid.NewGuid();
                 string displayTicketId = $"CASH-{newTicketGuid.ToString().Substring(0, 8).ToUpper()}";
 
-                // Instantiates the derived TPT entity directly
                 var walkOnJourney = new CashJourney
                 {
                     TicketReference = newTicketGuid,
@@ -129,7 +142,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                     TotalCost = shift.Route.BaseFare,
                     ShiftID = shift.Id,
                     RedeemedAt = DateTime.UtcNow,
-                    EndStopID = endStopId // Applies the dynamically calculated terminal stop
+                    EndStopID = endStopId
                 };
 
                 _context.Journeys.Add(walkOnJourney);
@@ -144,8 +157,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             }
 
             _context.ConductorShifts.Update(shift);
-
-            // 4. Save everything to SQL Server
             await _context.SaveChangesAsync();
 
             return Ok(new

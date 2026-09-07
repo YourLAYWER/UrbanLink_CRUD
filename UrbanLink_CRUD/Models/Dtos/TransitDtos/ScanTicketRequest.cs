@@ -2,7 +2,7 @@
 {
     public class ScanTicketRequest
     {
-        public int ShiftId { get; set; }
+        //public int ShiftId { get; set; }
         public string QRCodeData {  get; set; }
     }
 }
