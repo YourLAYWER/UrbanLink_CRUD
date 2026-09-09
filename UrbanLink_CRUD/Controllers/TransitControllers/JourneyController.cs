@@ -203,12 +203,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             return Ok(new
             {
                 message = "Journey purchased successfully",
-                journeyId = userJourney.JourneyID,
+                JourneyId = userJourney.JourneyID,
                 ticketReference = userJourney.TicketReference,
                 totalCost = secureFinalFare,
                 estimatedDurationMinutes = routingResult.TotalTimeMinutes,
-                estimatedArrivalTime = userJourney.EstimatedArrivalTime.ToString("HH:MM"),
-                TicketStatus = userJourney.Status.ToString()
+                estimatedArrivalTime = userJourney.EstimatedArrivalTime.ToString("HH:mm"),
+                ticketStatus = userJourney.Status.ToString()
             });
         }
 

@@ -25,7 +25,7 @@ namespace UrbanLink_CRUD.Models.Domain.Journey
             {
                 ShiftID = shiftId,
                 TotalCost = fareAmount,
-                EndStopID= endStopId,
+                EndStopID = endStopId,
                 Status = JourneyStatus.Completed, // Cash journeys are instantly completed upon printing
                 CreatedAt = DateTime.UtcNow,
                 RedeemedAt = DateTime.UtcNow, // Redeemed the moment it's printed
