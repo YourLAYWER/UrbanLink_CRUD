@@ -20,6 +20,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         }
 
         [HttpGet("buses/available")]
+        [Authorize(Roles = "Conductor, Driver, Admin")]
         public async Task<IActionResult> GetAvailableBuses()
         {
             // 1. Find the IDs of all buses currently being driven (ShiftEndTime is null)

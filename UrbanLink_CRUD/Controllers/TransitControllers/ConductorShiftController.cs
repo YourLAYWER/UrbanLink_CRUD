@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -57,6 +58,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         }
 
         [HttpPost("scan")]
+        [Authorize(Roles = "Conductor, Driver")]
         public async Task<IActionResult> ScanTicket([FromBody] ScanTicketRequest request)
         {
             if (!Guid.TryParse(request.QRCodeData, out Guid ticketGuid))
@@ -98,6 +100,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         }
 
         [HttpPost("cash-sale")]
+        [Authorize(Roles = "Conductor, Driver")]
         public async Task<IActionResult> RecordCashSale([FromBody] CashSaleRequest request)
         {
             // 1. Extract the authenticated conductor's ID from the JWT token claims
@@ -169,6 +172,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         }
 
         [HttpGet("summary")]
+        [Authorize(Roles = "Conductor, Driver, Admin")]
         public async Task<IActionResult> GetShiftSummary()
         {
             var conductorIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -199,6 +203,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         }
 
         [HttpPost("end")]
+        [Authorize(Roles = "Conductor, Driver, Admin")]
         public async Task<IActionResult> EndShift()
         {
             var conductorIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
