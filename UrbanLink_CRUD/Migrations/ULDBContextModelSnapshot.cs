@@ -349,7 +349,7 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.HasIndex("ConductorShiftId");
 
-                    b.ToTable("IncidentReport");
+                    b.ToTable("IncidentReports");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Journey", b =>

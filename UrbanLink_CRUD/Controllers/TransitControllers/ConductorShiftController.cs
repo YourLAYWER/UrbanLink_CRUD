@@ -141,16 +141,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 // Use the factory, passing in the dynamically found terminal stop
                 var walkOnJourney = _journeyFactory.CreateCashJourney(shift.Id, shift.Route.BaseFare, endStopId);
 
-                //var walkOnJourney = new CashJourney
-                //{
-                //    TicketReference = newTicketGuid,
-                //    Status = JourneyStatus.Completed,
-                //    TotalCost = shift.Route.BaseFare,
-                //    ShiftID = shift.Id,
-                //    RedeemedAt = DateTime.UtcNow,
-                //    EndStopID = endStopId
-                //};
-
                 string displayTicketId = $"CASH-{walkOnJourney.TicketReference.ToString().Substring(0, 8).ToUpper()}";
 
                 issuedTickets.Add(new PrintedTicketDto

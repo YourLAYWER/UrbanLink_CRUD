@@ -30,6 +30,9 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<ConductorShift> ConductorShifts { get; set; }
         public DbSet<RouteSchedule> RouteSchedules { get; set; } = null!;
 
+        // Incident Reporting
+        public DbSet<IncidentReport> IncidentReports { get; set; } = null!;
+
         public DbSet<Retailer> Retailers { get; set; } = null!;
         public DbSet<RetailerProduct> RetailerProducts { get; set; } = null!;
         public DbSet<Order> Orders { get; set; } = null!;
