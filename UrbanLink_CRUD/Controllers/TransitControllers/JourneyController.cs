@@ -213,7 +213,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         }
 
         [HttpPatch("update-status")]
-        [Authorize]
+        [Authorize(Roles = "Conductor, Driver")]
         public async Task<IActionResult> UpdateTicketStatus([FromBody] UpdateTicketStatusDto request)
         {
             // 1. Safely parse the string from Android into your strong C# Enum.

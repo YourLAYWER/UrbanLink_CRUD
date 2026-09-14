@@ -42,7 +42,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
         // POST: api/Stops
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Stop>> CreateStop([FromBody] Stop stop)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -55,7 +55,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
         // PUT: api/Stops/5
         [HttpPut("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateStop(int id, [FromBody] Stop stop)
         {
             if (id != stop.Id)
@@ -80,7 +80,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
         // DELETE: api/Stops/5
         [HttpDelete("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteStop(int id)
         {
             var stop = await _context.Stops.FindAsync(id);
