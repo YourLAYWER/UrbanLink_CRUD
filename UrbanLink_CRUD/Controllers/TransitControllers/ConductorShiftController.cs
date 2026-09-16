@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using UrbanLink_CRUD.Models.Data;
+using UrbanLink_CRUD.Models.Domain;
 using UrbanLink_CRUD.Models.Domain.Journey;
 using UrbanLink_CRUD.Models.Dtos.TransitDtos;
 using UrbanLink_CRUD.Models.Entities.Transit;
@@ -17,11 +19,13 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
     {
         private readonly ULDBContext _context;
         private readonly IJourneyFactory _journeyFactory;
+        private readonly IHubContext<TransitHub> _hubContext;
 
-        public ConductorShiftController(ULDBContext context, IJourneyFactory journeyFactory)
+        public ConductorShiftController(ULDBContext context, IJourneyFactory journeyFactory, IHubContext<TransitHub> hubContext)
         {
             _context = context;
             _journeyFactory = journeyFactory;
+            _hubContext = hubContext;
         }
 
         [HttpPost("start")]
@@ -99,7 +103,64 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             _context.ConductorShifts.Update(shift);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Ticket Validated", fareAmount = journey.TotalCost });
+            // 1. Identify the destination stop from the scanned journey
+            var destinationStopId = journey.EndStopID; // Assuming this exists on Journey
+
+            // 2. Add to active queue if it doesn't exist
+            var activeStop = await _context.TripDestinations
+                .FirstOrDefaultAsync(td => td.ShiftId == shift.Id && td.StopId == destinationStopId);
+
+            if (activeStop == null)
+            {
+                _context.TripDestinations.Add(new TripDestination
+                {
+                    ShiftId = shift.Id,
+                    StopId = destinationStopId,
+                    Status = "QUEUED"
+                });
+            }
+
+            await _context.SaveChangesAsync();
+
+            // 3. Fetch the updated, sequence-sorted list
+            var updatedQueue = await _context.TripDestinations
+                .Where(td => td.ShiftId == shift.Id && td.Status != "CLEARED")
+                .Join(
+                    _context.RouteStops,
+                    td => td.StopId,
+                    rs => rs.StopId,
+                    (td, rs) => new { td, rs }
+                )
+                .Join(
+                    _context.RouteSegments,
+                    combined => combined.rs.SegmentId,
+                    seg => seg.Id,
+                    (combined, seg) => new { combined.td, combined.rs, seg }
+                )
+                // Safely filter by the RouteId since stops do not duplicate on SA routes
+                .Where(x => x.seg.RouteId == shift.RouteId)
+                .OrderBy(x => x.rs.StopSequence)
+                .Select(x => new
+                {
+                    Name = x.td.Stop.Name,
+                    SequenceNumber = x.rs.StopSequence,
+                    PassengersDroppingOff = x.td.PassengersDroppingOff
+                })
+                .ToListAsync();
+
+            // OBSERVER TRIGGER: Broadcast the new queue to the specific shift group
+            await _hubContext.Clients.Group(shift.Id.ToString())
+                .SendAsync("QueueUpdated", updatedQueue);
+
+            // 4. Return the new queue to the Android app instantly
+            return Ok(new
+            {
+                message = "Ticket Validated",
+                fareAmount = journey.TotalCost,
+                activeQueue = updatedQueue // The Android app uses this to redraw the UI
+            });
+
+            // return Ok(new { message = "Ticket Validated", fareAmount = journey.TotalCost });
         }
 
         [HttpPost("cash-sale")]

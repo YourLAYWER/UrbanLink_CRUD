@@ -20,6 +20,7 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<Entities.Transit.TransitRoute> TransitRoutes { get; set; } = null!;
         public DbSet<Entities.Transit.RouteStop> RouteStops { get; set; } = null!;
         public DbSet<Entities.Transit.JourneyLeg> JourneyLegs { get; set; } = null!;
+        public DbSet<TripDestination> TripDestinations { get; set; }
 
         // NEW: Journey TPT DbSets
         public DbSet<Entities.Transit.Journey> Journeys { get; set; } = null!;
