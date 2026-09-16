@@ -6,6 +6,7 @@ using Microsoft.OpenApi;
 using System.Text;
 using System.Text.Json.Serialization;
 using UrbanLink_CRUD.Models.Data;
+using UrbanLink_CRUD.Models.Domain;
 using UrbanLink_CRUD.Models.Domain.Fare;
 using UrbanLink_CRUD.Models.Domain.Journey;
 using UrbanLink_CRUD.Services.RoutingLogic; // 1. Updated Namespace
@@ -93,6 +94,7 @@ builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
 // Register the background worker
 builder.Services.AddHostedService<TicketExpirationWorker>();
 
+builder.Services.AddSignalR(); // <-- Required for SignalR
 
 var app = builder.Build();
 
@@ -215,5 +217,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<TransitHub>("/transithub"); // <-- Maps the WebSocket route endpoint
 
 app.Run();

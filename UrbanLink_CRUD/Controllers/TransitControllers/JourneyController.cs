@@ -85,7 +85,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 return BadRequest(new { message = "Start and destination cannot be the same." });
 
             // Use live server time instead of the hardcoded test date
-            var currentDateTime = DateTime.UtcNow;
+            // ==========================================
+            // DEBUG: Hardcode time to 10:00 AM today
+            // ==========================================
+            var today = DateTime.UtcNow.Date;
+            var currentDateTime = new DateTime(today.Year, today.Month, today.Day, 10, 0, 0, DateTimeKind.Utc);
+            //var currentDateTime = DateTime.UtcNow;
 
             // 1. STRATEGY EXECUTION: Route based on user preference (Fastest, Cheapest, etc.)
             var routingResult = _routingService.ComputeRoute(
@@ -165,12 +170,18 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // 1. Resolve the algorithm based on user preference
             var routingStrategy = _routingFactory.GetStrategy("fastest");// Might add preference later be dynamic based on user preference or other factors
 
+            // ==========================================
+            // DEBUG: Hardcode time to 10:00 AM today
+            // ==========================================
+            var today = DateTime.UtcNow.Date;
+            var currentDateTime = new DateTime(today.Year, today.Month, today.Day, 10, 0, 0, DateTimeKind.Utc);
+
             // 2. Execute the chosen algorithm
-            var routeContext = new RoutingContext(request.StartStopId, request.EndStopId, DateTime.UtcNow);
+            var routeContext = new RoutingContext(request.StartStopId, request.EndStopId, currentDateTime);
             var routingResult = _routingService.ComputeRoute(
                 startStopId: request.StartStopId,
                 targetStopId: request.EndStopId,
-                userDepartureTime: DateTime.UtcNow,
+                userDepartureTime: currentDateTime,
                 preference: "fastest" // Pass the user's choice here
             );
 
@@ -194,7 +205,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 request.StartStopId,
                 request.EndStopId,
                 secureFinalFare,
-                DateTime.UtcNow.AddMinutes(routingResult.TotalTimeMinutes)
+                currentDateTime.AddMinutes(routingResult.TotalTimeMinutes)
             );
 
             _context.UserJourneys.Add(userJourney);

@@ -12,5 +12,11 @@ namespace UrbanLink_CRUD.Models.Domain
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, shiftId);
         }
+
+        // Leave group if shifting/logging out
+        public async Task LeaveShiftGroup(string shiftId)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, shiftId);
+        }
     }
 }
