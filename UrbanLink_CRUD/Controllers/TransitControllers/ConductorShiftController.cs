@@ -209,8 +209,19 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 .ToListAsync();
 
             // OBSERVER TRIGGER: Broadcast the new queue to the specific shift group
-            await _hubContext.Clients.Group($"bus_{shift.BusId}")
-                .SendAsync("QueueUpdated", updatedQueue);
+            //await _hubContext.Clients.Group($"bus_{shift.BusId}")
+            //    .SendAsync("QueueUpdated", updatedQueue);
+
+            string jsonQueue = System.Text.Json.JsonSerializer.Serialize(updatedQueue);
+
+
+            // --- ADD THIS LINE TO CHECK SERVER CONSOLE ---
+            string targetGroup = $"bus_{shift.BusId}";
+            Console.WriteLine($"[SignalR] Broadcasting 'QueueUpdated' to group: {targetGroup}");
+
+            // 2. Broadcast the string to the bus group
+            await _hubContext.Clients.Group(targetGroup)
+            .SendAsync("QueueUpdated", jsonQueue);
 
             // 4. Return the new queue to the Android app instantly
             return Ok(new
@@ -350,6 +361,39 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                     totalCashHandover = activeShift.TotalCashCollected,
                     digitalTicketsScanned = activeShift.DigitalTicketScanned // Reads direct property
                 }
+            });
+        }
+
+
+        [HttpPost("admin/force-logout-crew")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ForceLogoutAllCrew()
+        {
+            // 1. Find all active shifts belonging to Drivers or Conductors
+            var activeCrewShifts = await _context.ConductorShifts
+                .Include(cs => cs.Conductor)
+                .Where(cs => cs.ShiftEndTime == null &&
+                       (cs.Conductor.Role == Role.Driver || cs.Conductor.Role == Role.Conductor))
+                .ToListAsync();
+
+            if (!activeCrewShifts.Any())
+            {
+                return Ok(new { message = "No active crew shifts found to terminate." });
+            }
+
+            // 2. Terminate all active shifts
+            foreach (var shift in activeCrewShifts)
+            {
+                shift.ShiftEndTime = DateTime.UtcNow;
+            }
+
+            _context.ConductorShifts.UpdateRange(activeCrewShifts);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = $"Successfully terminated shifts for {activeCrewShifts.Count} crew members.",
+                terminatedShiftIds = activeCrewShifts.Select(s => s.Id).ToList()
             });
         }
     }

@@ -307,6 +307,8 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.HasIndex("BusId1");
 
+                    b.HasIndex("ConductorId");
+
                     b.HasIndex("RouteId");
 
                     b.ToTable("ConductorShifts");
@@ -836,6 +838,12 @@ namespace UrbanLink_CRUD.Migrations
                         .WithMany("ConductorShifts")
                         .HasForeignKey("BusId1");
 
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.User", "Conductor")
+                        .WithMany()
+                        .HasForeignKey("ConductorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.TransitRoute", "Route")
                         .WithMany()
                         .HasForeignKey("RouteId")
@@ -843,6 +851,8 @@ namespace UrbanLink_CRUD.Migrations
                         .IsRequired();
 
                     b.Navigation("Bus");
+
+                    b.Navigation("Conductor");
 
                     b.Navigation("Route");
                 });
