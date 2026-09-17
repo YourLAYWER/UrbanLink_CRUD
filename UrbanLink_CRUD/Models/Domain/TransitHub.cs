@@ -8,15 +8,15 @@ namespace UrbanLink_CRUD.Models.Domain
     public class TransitHub : Hub
     {
         // When a tablet boots up, it joins the group for its specific Shift or Bus
-        public async Task JoinShiftGroup(string shiftId)
+        public async Task JoinShiftGroup(string BusId)
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, shiftId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, BusId);
         }
 
         // Leave group if shifting/logging out
-        public async Task LeaveShiftGroup(string shiftId)
+        public async Task LeaveShiftGroup(string BusId)
         {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, shiftId);
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, BusId);
         }
     }
 }

@@ -28,26 +28,86 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             _hubContext = hubContext;
         }
 
+        //[HttpPost("start")]
+        //public async Task<IActionResult> StartShift([FromBody] StartShiftRequest request)
+        //{
+        //    var conductorIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (string.IsNullOrEmpty(conductorIdString)) return Unauthorized(new { message = "Invalid user token." });
+
+        //    int conductorId = int.Parse(conductorIdString);
+
+        //    var activeShift = await _context.ConductorShifts
+        //        .FirstOrDefaultAsync(cs => cs.ConductorId == conductorId && cs.ShiftEndTime == null);
+
+        //    if (activeShift != null)
+        //        return BadRequest(new { message = "You already have an active shift.", shiftId = activeShift.Id });
+
+        //    var busExists = await _context.Buses.AnyAsync(b => b.Id == request.BusId);
+        //    var routeExists = await _context.TransitRoutes.AnyAsync(r => r.Id == request.RouteId);
+
+        //    if (!busExists || !routeExists)
+        //        return NotFound(new { message = "The selected Bus or Route does not exist." });
+
+        //    var newShift = new ConductorShift
+        //    {
+        //        ConductorId = conductorId,
+        //        BusId = request.BusId,
+        //        RouteId = request.RouteId,
+        //        ShiftStartTime = DateTime.UtcNow,
+        //        TotalCashCollected = 0,
+        //        DigitalTicketScanned = 0
+        //    };
+
+        //    _context.ConductorShifts.Add(newShift);
+        //    await _context.SaveChangesAsync();
+
+        //    return Ok(new { message = "Shift started successfully.", shiftId = newShift.Id, startTime = newShift.ShiftStartTime });
+        //}
+
         [HttpPost("start")]
         public async Task<IActionResult> StartShift([FromBody] StartShiftRequest request)
         {
             var conductorIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(conductorIdString)) return Unauthorized(new { message = "Invalid user token." });
+            var userRole = User.FindFirstValue(ClaimTypes.Role) ?? "Conductor";
+
+            if (string.IsNullOrEmpty(conductorIdString))
+                return Unauthorized(new { message = "Invalid user token." });
 
             int conductorId = int.Parse(conductorIdString);
 
+            // 1. Check if this user already has an active shift anywhere
             var activeShift = await _context.ConductorShifts
                 .FirstOrDefaultAsync(cs => cs.ConductorId == conductorId && cs.ShiftEndTime == null);
 
             if (activeShift != null)
                 return BadRequest(new { message = "You already have an active shift.", shiftId = activeShift.Id });
 
+            // 2. Check if the bus and route exist
             var busExists = await _context.Buses.AnyAsync(b => b.Id == request.BusId);
             var routeExists = await _context.TransitRoutes.AnyAsync(r => r.Id == request.RouteId);
 
             if (!busExists || !routeExists)
                 return NotFound(new { message = "The selected Bus or Route does not exist." });
 
+            // 3. ROLE-BASED BUS CONFLICT CHECK:
+            // Ensure the bus doesn't already have someone logged in with the exact same role
+            var existingBusShifts = await _context.ConductorShifts
+                .Where(cs => cs.BusId == request.BusId && cs.ShiftEndTime == null)
+                .Include(cs => cs.Conductor)
+                .ToListAsync();
+
+            //bool roleAlreadyExistsOnBus = existingBusShifts.Any(cs => cs.Conductor?.Role.Equals(userRole, StringComparison.OrdinalIgnoreCase) == true);
+
+            //Role userRole = Enum.TryParse<Role>(User.FindFirstValue(ClaimTypes.Role), out var parsedRole) ? parsedRole : Role.Conductor;
+            Role parsedUserRole = Enum.TryParse<Role>(userRole, out var r) ? r : Role.Conductor;
+            bool roleAlreadyExistsOnBus = existingBusShifts.Any(cs => cs.Conductor?.Role == parsedUserRole);
+
+            if (roleAlreadyExistsOnBus)
+            {
+                return BadRequest(new { message = $"This bus already has an active {userRole} assigned." });
+            }
+
+            // 4. Create the new shift
             var newShift = new ConductorShift
             {
                 ConductorId = conductorId,
@@ -149,7 +209,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 .ToListAsync();
 
             // OBSERVER TRIGGER: Broadcast the new queue to the specific shift group
-            await _hubContext.Clients.Group(shift.Id.ToString())
+            await _hubContext.Clients.Group($"bus_{shift.BusId}")
                 .SendAsync("QueueUpdated", updatedQueue);
 
             // 4. Return the new queue to the Android app instantly

@@ -7,6 +7,7 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
         public int Id { get; set; }
 
         public int ConductorId { get; set; }
+        public virtual User Conductor { get; set; }
         public int BusId { get; set; }
         public virtual Bus Bus { get; set; }
 
