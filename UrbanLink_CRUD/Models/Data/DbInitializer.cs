@@ -46,6 +46,23 @@ namespace UrbanLink_CRUD.Models.Data
                 context.Users.Add(conductorUser);
                 context.SaveChanges();
             }
+
+            if (!context.Users.Any(u => u.Email == "driver@urbanlink.co.za"))
+            {
+                string conductorPasswordHash = BCrypt.Net.BCrypt.HashPassword("DriverSecure@2026!", 11);
+
+                var driverUser = new User
+                {
+                    Name = "Gcina Makhala",
+                    Email = "driver@urbanlink.co.za",
+                    Password = conductorPasswordHash,
+                    Role = Models.Enums.Role.Driver,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                context.Users.Add(driverUser);
+                context.SaveChanges();
+            }
         }
 
         public static void SeedTransitProviders(ULDBContext context)
