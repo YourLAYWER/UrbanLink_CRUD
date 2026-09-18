@@ -28,42 +28,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             _hubContext = hubContext;
         }
 
-        //[HttpPost("start")]
-        //public async Task<IActionResult> StartShift([FromBody] StartShiftRequest request)
-        //{
-        //    var conductorIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        //    if (string.IsNullOrEmpty(conductorIdString)) return Unauthorized(new { message = "Invalid user token." });
-
-        //    int conductorId = int.Parse(conductorIdString);
-
-        //    var activeShift = await _context.ConductorShifts
-        //        .FirstOrDefaultAsync(cs => cs.ConductorId == conductorId && cs.ShiftEndTime == null);
-
-        //    if (activeShift != null)
-        //        return BadRequest(new { message = "You already have an active shift.", shiftId = activeShift.Id });
-
-        //    var busExists = await _context.Buses.AnyAsync(b => b.Id == request.BusId);
-        //    var routeExists = await _context.TransitRoutes.AnyAsync(r => r.Id == request.RouteId);
-
-        //    if (!busExists || !routeExists)
-        //        return NotFound(new { message = "The selected Bus or Route does not exist." });
-
-        //    var newShift = new ConductorShift
-        //    {
-        //        ConductorId = conductorId,
-        //        BusId = request.BusId,
-        //        RouteId = request.RouteId,
-        //        ShiftStartTime = DateTime.UtcNow,
-        //        TotalCashCollected = 0,
-        //        DigitalTicketScanned = 0
-        //    };
-
-        //    _context.ConductorShifts.Add(newShift);
-        //    await _context.SaveChangesAsync();
-
-        //    return Ok(new { message = "Shift started successfully.", shiftId = newShift.Id, startTime = newShift.ShiftStartTime });
-        //}
-
         [HttpPost("start")]
         public async Task<IActionResult> StartShift([FromBody] StartShiftRequest request)
         {
@@ -209,17 +173,13 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 .ToListAsync();
 
             // OBSERVER TRIGGER: Broadcast the new queue to the specific shift group
-            //await _hubContext.Clients.Group($"bus_{shift.BusId}")
-            //    .SendAsync("QueueUpdated", updatedQueue);
-
             string jsonQueue = System.Text.Json.JsonSerializer.Serialize(updatedQueue);
-
 
             // --- ADD THIS LINE TO CHECK SERVER CONSOLE ---
             string targetGroup = $"bus_{shift.BusId}";
             Console.WriteLine($"[SignalR] Broadcasting 'QueueUpdated' to group: {targetGroup}");
 
-            // 2. Broadcast the string to the bus group
+            // Broadcast the string to the bus group
             await _hubContext.Clients.Group(targetGroup)
             .SendAsync("QueueUpdated", jsonQueue);
 
@@ -230,9 +190,69 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 fareAmount = journey.TotalCost,
                 activeQueue = updatedQueue // The Android app uses this to redraw the UI
             });
-
-            // return Ok(new { message = "Ticket Validated", fareAmount = journey.TotalCost });
         }
+
+        //[HttpPost("cash-sale")]
+        //[Authorize(Roles = "Conductor, Driver")]
+        //public async Task<IActionResult> RecordCashSale([FromBody] CashSaleRequest request)
+        //{
+        //    // 1. Extract the authenticated conductor's ID from the JWT token claims
+        //    var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        //    if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int conductorId))
+        //        return Unauthorized(new { message = "Invalid token or user ID." });
+
+        //    // 2. Automatically find the active shift for this specific conductor on the backend
+        //    var shift = await _context.ConductorShifts
+        //        .Include(s => s.Route)
+        //        .FirstOrDefaultAsync(s => s.ConductorId == conductorId && s.ShiftEndTime == null);
+
+        //    if (shift == null)
+        //        return BadRequest(new { message = "Invalid or closed shift. No active shift found." });
+
+        //    // 3. Find the Terminal (Last) Stop of this specific Route
+        //    var terminalSegment = await _context.RouteSegments
+        //        .FirstOrDefaultAsync(rs => rs.RouteId == shift.RouteId &&
+        //            !_context.RouteSegments.Any(other => other.RouteId == shift.RouteId && other.OriginStopId == rs.DestinationStopId));
+
+        //    if (terminalSegment == null)
+        //        return BadRequest(new { message = "Route configuration error: Cannot determine terminal stop." });
+
+        //    int endStopId = terminalSegment.DestinationStopId;
+
+        //    // 4. Calculate Fares
+        //    decimal fareTotal = shift.Route.BaseFare * request.PassengerCount;
+        //    shift.TotalCashCollected += fareTotal;
+
+        //    var issuedTickets = new List<PrintedTicketDto>();
+
+        //    // 5. Issue the tickets for the waist printer
+        //    for (int i = 0; i < request.PassengerCount; i++)
+        //    {
+        //        // Use the factory, passing in the dynamically found terminal stop
+        //        var walkOnJourney = _journeyFactory.CreateCashJourney(shift.Id, shift.Route.BaseFare, endStopId);
+
+        //        string displayTicketId = $"CASH-{walkOnJourney.TicketReference.ToString().Substring(0, 8).ToUpper()}";
+
+        //        issuedTickets.Add(new PrintedTicketDto
+        //        {
+        //            TicketId = displayTicketId,
+        //            RouteName = shift.Route.RouteName,
+        //            FarePaid = shift.Route.BaseFare,
+        //            IssuedAt = walkOnJourney.RedeemedAt.Value
+        //        });
+        //    }
+
+        //    _context.ConductorShifts.Update(shift);
+        //    await _context.SaveChangesAsync();
+
+        //    return Ok(new
+        //    {
+        //        message = "Cash sale recorded successfully.",
+        //        amountAdded = fareTotal,
+        //        newTotal = shift.TotalCashCollected,
+        //        receipts = issuedTickets
+        //    });
+        //}
 
         [HttpPost("cash-sale")]
         [Authorize(Roles = "Conductor, Driver")]
@@ -270,7 +290,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // 5. Issue the tickets for the waist printer
             for (int i = 0; i < request.PassengerCount; i++)
             {
-                // Use the factory, passing in the dynamically found terminal stop
                 var walkOnJourney = _journeyFactory.CreateCashJourney(shift.Id, shift.Route.BaseFare, endStopId);
 
                 string displayTicketId = $"CASH-{walkOnJourney.TicketReference.ToString().Substring(0, 8).ToUpper()}";
@@ -287,12 +306,38 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             _context.ConductorShifts.Update(shift);
             await _context.SaveChangesAsync();
 
+            // 6. Build the active queue using RouteStop sequence numbers and Stop names
+            var activeQueue = await _context.RouteStops
+                .Where(rs => rs.RouteSegment.RouteId == shift.RouteId)
+                .Join(_context.Stops,
+                      rs => rs.StopId,
+                      s => s.Id,
+                      (rs, s) => new { RouteStop = rs, Stop = s })
+                .GroupJoin(_context.Journeys.Where(j => j.Status == JourneyStatus.Active),
+                           x => x.Stop.Id,
+                           j => j.EndStopID,
+                           (x, journeys) => new
+                           {
+                               Name = x.Stop.Name,
+                               SequenceNumber = x.RouteStop.StopSequence,
+                               PassengersDroppingOff = journeys.Count()
+                           })
+                // Optional: Only include stops that have active drop-offs or are part of the active queue sequence
+                .Where(q => q.PassengersDroppingOff > 0)
+                .OrderBy(q => q.SequenceNumber)
+                .ToListAsync();
+
+            // 7. Broadcast real-time queue update to the driver via SignalR
+            await _hubContext.Clients.Group($"bus_{shift.BusId}")
+                .SendAsync("QueueUpdated", System.Text.Json.JsonSerializer.Serialize(activeQueue));
+
             return Ok(new
             {
                 message = "Cash sale recorded successfully.",
                 amountAdded = fareTotal,
                 newTotal = shift.TotalCashCollected,
-                receipts = issuedTickets
+                receipts = issuedTickets,
+                activeQueue = activeQueue
             });
         }
 
