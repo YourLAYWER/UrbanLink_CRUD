@@ -344,6 +344,9 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<DateTime>("ReportedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 

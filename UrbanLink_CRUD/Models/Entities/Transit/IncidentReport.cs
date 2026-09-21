@@ -27,5 +27,7 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
 
         // E.g., "Open", "Investigating", "Resolved"
         public IncidentStatus Status { get; set; }
+
+        public DateTime? ResolvedAt { get; set; }
     }
 }

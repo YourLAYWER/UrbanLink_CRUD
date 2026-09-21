@@ -6,6 +6,7 @@
         PassengerDispute,
         SOS,
         MedicalEmergency,
+        Delay,
         Other
     }
 }
