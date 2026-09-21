@@ -211,6 +211,23 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             _context.UserJourneys.Add(userJourney);
             await _context.SaveChangesAsync();
 
+            // Extracting unique route IDs for the Firebase subscriptions
+            var involvedRouteIds = routingResult.Legs
+                .Select(leg => leg.RouteId)
+                .Distinct()
+                .ToList();
+
+            //return Ok(new
+            //{
+            //    message = "Journey purchased successfully",
+            //    JourneyId = userJourney.JourneyID,
+            //    ticketReference = userJourney.TicketReference,
+            //    totalCost = secureFinalFare,
+            //    estimatedDurationMinutes = routingResult.TotalTimeMinutes,
+            //    estimatedArrivalTime = userJourney.EstimatedArrivalTime.ToString("HH:mm"),
+            //    ticketStatus = userJourney.Status.ToString()
+            //});
+
             return Ok(new
             {
                 message = "Journey purchased successfully",
@@ -219,7 +236,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 totalCost = secureFinalFare,
                 estimatedDurationMinutes = routingResult.TotalTimeMinutes,
                 estimatedArrivalTime = userJourney.EstimatedArrivalTime.ToString("HH:mm"),
-                ticketStatus = userJourney.Status.ToString()
+                ticketStatus = userJourney.Status.ToString(),
+                routeIds = involvedRouteIds // Add the array to the payload
             });
         }
 

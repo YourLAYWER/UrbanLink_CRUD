@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UrbanLink_CRUD.Models.Data;
+using UrbanLink_CRUD.Models.Domain.Incident;
 using UrbanLink_CRUD.Models.Domain.Journey;
 using UrbanLink_CRUD.Models.Dtos.TransitDtos;
 using UrbanLink_CRUD.Models.Entities.Transit;
@@ -14,15 +16,18 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
     public class IncidentController : ControllerBase
     {
         private readonly ULDBContext _context;
-        public IncidentController(ULDBContext context)
+        private readonly IncidentStrategyResolver _strategyResolver;
+        public IncidentController(ULDBContext context, IncidentStrategyResolver strategyResolver)
         {
             _context = context;
+            _strategyResolver = strategyResolver;
         }
 
         [HttpPost("report")]
+        [Authorize] // Ensure the tablet is authenticated
         public async Task<IActionResult> LogIncident([FromBody] IncidentReportRequestDto request)
         {
-            // 1. Extract the authenticated conductor's ID from the JWT token
+            // 1. Extract the authenticated conductor's/driver's ID from the JWT token
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int conductorId))
                 return Unauthorized(new { message = "Invalid token or user ID." });
@@ -34,28 +39,56 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (shift == null)
                 return BadRequest(new { message = "No active shift found. Cannot log incident." });
 
-            // 3. Construct and save the incident record using your entity structure
-            var incident = new IncidentReport
+            try
             {
-                ConductorShiftId = shift.Id,
-                IsEmergency = request.IsEmergency,
-                Category = request.Category,
-                Description = request.Description ?? string.Empty, // Prevents null reference if left blank
-                Latitude = request.Latitude,
-                Longitude = request.Longitude,
-                ReportedAt = DateTime.UtcNow,
-                Status = IncidentStatus.Open // Assuming 'Open' is the starting state in your enum
-            };
+                // 3. Resolve the specific strategy based on the incoming category ID
+                // Cast to int if request.Category is an enum in your DTO
+                var strategy = _strategyResolver.Resolve((int)request.Category);
 
-            _context.IncidentReports.Add(incident);
-            await _context.SaveChangesAsync();
+                // 4. Execute the strategy (Saves to DB and fires Firebase notification if applicable)
+                await strategy.ProcessIncidentAsync(request, shift.Id);
 
-            return Ok(new
+                return Ok(new
+                {
+                    message = request.IsEmergency ? "EMERGENCY SOS LOGGED." : "Routine incident logged successfully.",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (NotSupportedException ex)
             {
-                message = request.IsEmergency ? "EMERGENCY SOS LOGGED." : "Routine incident logged successfully.",
-                incidentId = incident.Id,
-                timestamp = incident.ReportedAt
-            });
+                // Catches the exception thrown if the driver selects a category we haven't built a strategy for yet
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                // Generic fallback for database or Firebase failures
+                return StatusCode(500, new { error = "An error occurred while processing the incident.", details = ex.Message });
+            }
+        }
+
+        [HttpGet("routes/{routeId}/status")]
+        public async Task<IActionResult> GetRouteStatus(int routeId)
+        {
+            // Find any OPEN incidents for active shifts on this route
+            var activeAlert = await _context.IncidentReports
+                .Include(i => i.ConductorShift)
+                .Where(i => i.ConductorShift.RouteId == routeId
+                         && i.Status == IncidentStatus.Open
+                         && i.Category == IncidentCategory.Delay)
+                .OrderByDescending(i => i.ReportedAt)
+                .Select(i => new
+                {
+                    Message = i.Description,
+                    ReportedAt = i.ReportedAt
+                })
+                .FirstOrDefaultAsync();
+
+            if (activeAlert != null)
+            {
+                return Ok(new { hasDelay = true, alert = activeAlert });
+            }
+
+            return Ok(new { hasDelay = false });
         }
     }
 }

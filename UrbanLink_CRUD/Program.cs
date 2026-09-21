@@ -1,3 +1,5 @@
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -8,6 +10,8 @@ using System.Text.Json.Serialization;
 using UrbanLink_CRUD.Models.Data;
 using UrbanLink_CRUD.Models.Domain;
 using UrbanLink_CRUD.Models.Domain.Fare;
+using UrbanLink_CRUD.Models.Domain.Incident;
+using UrbanLink_CRUD.Models.Domain.Incident.FireBase;
 using UrbanLink_CRUD.Models.Domain.Journey;
 using UrbanLink_CRUD.Services.RoutingLogic; // 1. Updated Namespace
 using UrbanLink_CRUD.Services.Workers;
@@ -98,6 +102,15 @@ builder.Services.AddSingleton<IRoutingStrategyFactory, RoutingStrategyFactory>()
 builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
 builder.Services.AddSingleton<IJourneyFactory, JourneyFactory>();
 
+//------Registering IncidentReport------
+// Register the specific strategies
+builder.Services.AddScoped<IIncidentStrategy, DelayIncidentStrategy>();
+// builder.Services.AddScoped<IIncidentStrategy, MedicalIncidentStrategy>(); // Add others as you build them
+
+// Register the resolver itself
+builder.Services.AddScoped<IncidentStrategyResolver>();
+//------End--------
+
 // --- REGISTERING THE SERVICE ---
 // 2. Updated DI Registration to use the Interface
 builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
@@ -106,7 +119,25 @@ builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
 // Register the background worker
 builder.Services.AddHostedService<TicketExpirationWorker>();
 
-builder.Services.AddSignalR(); // <-- Required for SignalR
+builder.Services.AddSignalR(); // for SignalR
+
+
+//-------Firebase Configuration----------
+// 1. Initialize Firebase Admin SDK
+var firebaseKeyPath = Path.Combine(builder.Environment.ContentRootPath, "firebase_admin_sdk.json");
+
+// Ensure it only initializes once
+if (FirebaseApp.DefaultInstance == null)
+{
+    FirebaseApp.Create(new AppOptions()
+    {
+        Credential = GoogleCredential.FromFile(firebaseKeyPath)
+    });
+}
+
+// 2. Register the Notification Service
+builder.Services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();
+//---------------End-------------------
 
 var app = builder.Build();
 
