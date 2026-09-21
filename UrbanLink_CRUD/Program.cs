@@ -22,6 +22,18 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
+// --- CORS: allow the React admin UI (Vite dev server) to call this API ---
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AdminUI", policy => policy
+        .WithOrigins(
+            "http://localhost:5173",
+            "http://127.0.0.1:5173")
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials()); // needed for the SignalR hub (/transithub)
+});
+
 // 2. Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
@@ -211,6 +223,10 @@ if (app.Environment.IsDevelopment())
 
 // Disabled UseHttpsRedirection to allow access for the Mobile application
 // app.UseHttpsRedirection();
+
+// CORS must come BEFORE authentication so the browser's preflight (OPTIONS)
+// request from the admin UI is answered with the right headers.
+app.UseCors("AdminUI");
 
 // These two MUST appear in this exact order, Authentication first, then Authorization. Otherwise, you will get 401 Unauthorized errors.
 app.UseAuthentication();

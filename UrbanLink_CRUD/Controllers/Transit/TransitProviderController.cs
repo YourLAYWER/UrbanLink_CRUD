@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UrbanLink_CRUD.Models.Data;
@@ -93,6 +94,7 @@ namespace UrbanLink_CRUD.Controllers.Transit
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<TransitProvider>> CreateTransitProvider(TransitProvider provider)
         {
             _context.TransitProviders.Add(provider);
@@ -101,6 +103,7 @@ namespace UrbanLink_CRUD.Controllers.Transit
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateTransitProvider(int id, TransitProvider provider)
         {
            if (id != provider.Id) return BadRequest(new { message = "ID in URL does not match ID in request body." });
@@ -115,6 +118,7 @@ namespace UrbanLink_CRUD.Controllers.Transit
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteTransitProvider(int id)
         {
             var provider = await _context.TransitProviders.FindAsync(id);
