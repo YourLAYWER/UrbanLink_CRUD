@@ -47,7 +47,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
         // POST: api/RouteSegments
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<RouteSegment>> CreateRouteSegment([FromBody] RouteSegment segment)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -60,7 +60,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
         // PUT: api/RouteSegments/5
         [HttpPut("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateRouteSegment(int id, [FromBody] RouteSegment segment)
         {
             if (id != segment.Id)
@@ -85,7 +85,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
         // DELETE: api/RouteSegments/5
         [HttpDelete("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteRouteSegment(int id)
         {
             var segment = await _context.RouteSegments.FindAsync(id);
