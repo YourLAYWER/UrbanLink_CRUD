@@ -69,17 +69,27 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         [HttpGet("routes/{routeId}/status")]
         public async Task<IActionResult> GetRouteStatus(int routeId)
         {
-            // Find any OPEN incidents for active shifts on this route
+            // 1. Define the expiration window (e.g., ignore anything older than __ hours)
+            var expirationWindow = DateTime.UtcNow.AddHours(-1);
+
             var activeAlert = await _context.IncidentReports
                 .Include(i => i.ConductorShift)
                 .Where(i => i.ConductorShift.RouteId == routeId
                          && i.Status == IncidentStatus.Open
-                         && i.Category == IncidentCategory.Delay)
+                         && i.Category == IncidentCategory.Delay
+
+                         // 2. THE FAIL-SAFE: Only fetch if it happened recently
+                         && i.ReportedAt >= expirationWindow
+
+                       // 3. OPTIONAL: If your ConductorShift model tracks Active status, add this:
+                       //&& i.ConductorShift.IsActive == true
+                       )
                 .OrderByDescending(i => i.ReportedAt)
                 .Select(i => new
                 {
-                    Message = i.Description,
-                    ReportedAt = i.ReportedAt
+                    message = i.Description,
+                    reportedAt = i.ReportedAt,
+                    isEmergency = i.IsEmergency
                 })
                 .FirstOrDefaultAsync();
 
