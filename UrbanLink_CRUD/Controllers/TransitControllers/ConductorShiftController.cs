@@ -95,42 +95,70 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (!Guid.TryParse(request.QRCodeData, out Guid ticketGuid))
                 return BadRequest(new { message = "Invalid QR Code format." });
 
-            // 1. Extract the authenticated conductor's ID from the JWT token claims
+            // 1. Extract the authenticated conductor's ID
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int conductorId))
                 return Unauthorized(new { message = "Invalid token or user ID." });
 
-            // 2. Automatically find the active shift for this specific conductor on the backend
+            // 2. Find the active shift
             var shift = await _context.ConductorShifts
                 .FirstOrDefaultAsync(s => s.ConductorId == conductorId && s.ShiftEndTime == null);
 
             if (shift == null)
                 return BadRequest(new { message = "No active shift found. Please start a shift first." });
 
-            var journey = await _context.Journeys.FirstOrDefaultAsync(j => j.TicketReference == ticketGuid);
+            // 3. Load the Journey AND its associated Legs
+            var journey = await _context.Journeys
+                .Include(j => j.Legs)
+                .FirstOrDefaultAsync(j => j.TicketReference == ticketGuid);
 
             if (journey == null)
                 return NotFound(new { message = "Invalid Ticket: Not found in system." });
 
-            // Uses strong Enum
             if (journey.Status != JourneyStatus.Active)
                 return BadRequest(new { message = $"Ticket Rejected: Already {journey.Status}." });
 
-            // Uses strong Enum
-            journey.Status = JourneyStatus.Completed;
-            journey.RedeemedAt = DateTime.UtcNow;
+            // 4. Find the specific JourneyLeg that matches the Conductor's Route
+            var currentLeg = journey.Legs.FirstOrDefault(l => l.RouteId == shift.RouteId);
 
-            // Increment the counter directly on the shift for the summary screen
+            if (currentLeg == null)
+                return BadRequest(new { message = "Ticket Rejected: Not valid for this specific route." });
+
+            if (currentLeg.RedeemedAt != null)
+                return BadRequest(new { message = "Ticket Rejected: Already scanned for this route." });
+
+            // 5. CASCADE VOID (The Skipping Logic)
+            // Find any legs that came BEFORE this one that the passenger skipped, and void them.
+            var skippedLegs = journey.Legs
+                .Where(l => l.SequenceOrder < currentLeg.SequenceOrder && l.RedeemedAt == null)
+                .ToList();
+
+            foreach (var skipped in skippedLegs)
+            {
+                // Stamping them with the current time effectively consumes them so they cannot be reused
+                skipped.RedeemedAt = DateTime.UtcNow;
+            }
+
+            // 6. Redeem the current leg
+            currentLeg.RedeemedAt = DateTime.UtcNow;
             shift.DigitalTicketScanned += 1;
+
+            // 7. Check if this is the final leg of the journey
+            bool isFinalLeg = !journey.Legs.Any(l => l.SequenceOrder > currentLeg.SequenceOrder);
+
+            if (isFinalLeg)
+            {
+                journey.Status = JourneyStatus.Completed;
+                journey.RedeemedAt = DateTime.UtcNow;
+            }
 
             _context.Journeys.Update(journey);
             _context.ConductorShifts.Update(shift);
             await _context.SaveChangesAsync();
 
-            // 1. Identify the destination stop from the scanned journey
-            var destinationStopId = journey.EndStopID; // Assuming this exists on Journey
+            // 8. QUEUE LOGIC: Use the Destination Stop of the CURRENT LEG, not the parent Journey
+            var destinationStopId = currentLeg.DestinationStopId;
 
-            // 2. Add to active queue if it doesn't exist
             var activeStop = await _context.TripDestinations
                 .FirstOrDefaultAsync(td => td.ShiftId == shift.Id && td.StopId == destinationStopId);
 
@@ -140,13 +168,20 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 {
                     ShiftId = shift.Id,
                     StopId = destinationStopId,
-                    Status = "QUEUED"
+                    Status = "QUEUED",
+                    PassengersDroppingOff = 1 // Initialize drop-off count
                 });
+            }
+            else
+            {
+                // If it exists, increment the number of passengers dropping off here
+                activeStop.PassengersDroppingOff += 1;
+                _context.TripDestinations.Update(activeStop);
             }
 
             await _context.SaveChangesAsync();
 
-            // 3. Fetch the updated, sequence-sorted list
+            // 9. Fetch the updated, sequence-sorted list for the UI
             var updatedQueue = await _context.TripDestinations
                 .Where(td => td.ShiftId == shift.Id && td.Status != "CLEARED")
                 .Join(
@@ -161,7 +196,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                     seg => seg.Id,
                     (combined, seg) => new { combined.td, combined.rs, seg }
                 )
-                // Safely filter by the RouteId since stops do not duplicate on SA routes
                 .Where(x => x.seg.RouteId == shift.RouteId)
                 .OrderBy(x => x.rs.StopSequence)
                 .Select(x => new
@@ -172,30 +206,29 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 })
                 .ToListAsync();
 
-            // OBSERVER TRIGGER: Broadcast the new queue to the specific shift group
+            // 10. OBSERVER TRIGGER: Broadcast the new queue
             string jsonQueue = System.Text.Json.JsonSerializer.Serialize(updatedQueue);
-
-            // --- ADD THIS LINE TO CHECK SERVER CONSOLE ---
             string targetGroup = $"bus_{shift.BusId}";
+
             Console.WriteLine($"[SignalR] Broadcasting 'QueueUpdated' to group: {targetGroup}");
+            await _hubContext.Clients.Group(targetGroup).SendAsync("QueueUpdated", jsonQueue);
 
-            // Broadcast the string to the bus group
-            await _hubContext.Clients.Group(targetGroup)
-            .SendAsync("QueueUpdated", jsonQueue);
-
-            // 4. Return the new queue to the Android app instantly
+            // 11. Return success payload to Conductor App
             return Ok(new
             {
-                message = "Ticket Validated",
-                fareAmount = journey.TotalCost,
-                activeQueue = updatedQueue // The Android app uses this to redraw the UI
+                message = skippedLegs.Any() ? "Valid (Previous Leg Forfeited)" : "Ticket Validated",
+                fareAmount = currentLeg.LegFare, // Changed to show the fare for THIS leg, not the total
+                activeQueue = updatedQueue
             });
         }
 
-        //[HttpPost("cash-sale")]
+        //[HttpPost("scan")]
         //[Authorize(Roles = "Conductor, Driver")]
-        //public async Task<IActionResult> RecordCashSale([FromBody] CashSaleRequest request)
+        //public async Task<IActionResult> ScanTicket([FromBody] ScanTicketRequest request)
         //{
+        //    if (!Guid.TryParse(request.QRCodeData, out Guid ticketGuid))
+        //        return BadRequest(new { message = "Invalid QR Code format." });
+
         //    // 1. Extract the authenticated conductor's ID from the JWT token claims
         //    var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         //    if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int conductorId))
@@ -203,54 +236,93 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
         //    // 2. Automatically find the active shift for this specific conductor on the backend
         //    var shift = await _context.ConductorShifts
-        //        .Include(s => s.Route)
         //        .FirstOrDefaultAsync(s => s.ConductorId == conductorId && s.ShiftEndTime == null);
 
         //    if (shift == null)
-        //        return BadRequest(new { message = "Invalid or closed shift. No active shift found." });
+        //        return BadRequest(new { message = "No active shift found. Please start a shift first." });
 
-        //    // 3. Find the Terminal (Last) Stop of this specific Route
-        //    var terminalSegment = await _context.RouteSegments
-        //        .FirstOrDefaultAsync(rs => rs.RouteId == shift.RouteId &&
-        //            !_context.RouteSegments.Any(other => other.RouteId == shift.RouteId && other.OriginStopId == rs.DestinationStopId));
+        //    var journey = await _context.Journeys.FirstOrDefaultAsync(j => j.TicketReference == ticketGuid);
 
-        //    if (terminalSegment == null)
-        //        return BadRequest(new { message = "Route configuration error: Cannot determine terminal stop." });
+        //    if (journey == null)
+        //        return NotFound(new { message = "Invalid Ticket: Not found in system." });
 
-        //    int endStopId = terminalSegment.DestinationStopId;
+        //    // Uses strong Enum
+        //    if (journey.Status != JourneyStatus.Active)
+        //        return BadRequest(new { message = $"Ticket Rejected: Already {journey.Status}." });
 
-        //    // 4. Calculate Fares
-        //    decimal fareTotal = shift.Route.BaseFare * request.PassengerCount;
-        //    shift.TotalCashCollected += fareTotal;
+        //    // Uses strong Enum
+        //    journey.Status = JourneyStatus.Completed;
+        //    journey.RedeemedAt = DateTime.UtcNow;
 
-        //    var issuedTickets = new List<PrintedTicketDto>();
+        //    // Increment the counter directly on the shift for the summary screen
+        //    shift.DigitalTicketScanned += 1;
 
-        //    // 5. Issue the tickets for the waist printer
-        //    for (int i = 0; i < request.PassengerCount; i++)
-        //    {
-        //        // Use the factory, passing in the dynamically found terminal stop
-        //        var walkOnJourney = _journeyFactory.CreateCashJourney(shift.Id, shift.Route.BaseFare, endStopId);
-
-        //        string displayTicketId = $"CASH-{walkOnJourney.TicketReference.ToString().Substring(0, 8).ToUpper()}";
-
-        //        issuedTickets.Add(new PrintedTicketDto
-        //        {
-        //            TicketId = displayTicketId,
-        //            RouteName = shift.Route.RouteName,
-        //            FarePaid = shift.Route.BaseFare,
-        //            IssuedAt = walkOnJourney.RedeemedAt.Value
-        //        });
-        //    }
-
+        //    _context.Journeys.Update(journey);
         //    _context.ConductorShifts.Update(shift);
         //    await _context.SaveChangesAsync();
 
+        //    // 1. Identify the destination stop from the scanned journey
+        //    var destinationStopId = journey.EndStopID; // Assuming this exists on Journey
+
+        //    // 2. Add to active queue if it doesn't exist
+        //    var activeStop = await _context.TripDestinations
+        //        .FirstOrDefaultAsync(td => td.ShiftId == shift.Id && td.StopId == destinationStopId);
+
+        //    if (activeStop == null)
+        //    {
+        //        _context.TripDestinations.Add(new TripDestination
+        //        {
+        //            ShiftId = shift.Id,
+        //            StopId = destinationStopId,
+        //            Status = "QUEUED"
+        //        });
+        //    }
+
+        //    await _context.SaveChangesAsync();
+
+        //    // 3. Fetch the updated, sequence-sorted list
+        //    var updatedQueue = await _context.TripDestinations
+        //        .Where(td => td.ShiftId == shift.Id && td.Status != "CLEARED")
+        //        .Join(
+        //            _context.RouteStops,
+        //            td => td.StopId,
+        //            rs => rs.StopId,
+        //            (td, rs) => new { td, rs }
+        //        )
+        //        .Join(
+        //            _context.RouteSegments,
+        //            combined => combined.rs.SegmentId,
+        //            seg => seg.Id,
+        //            (combined, seg) => new { combined.td, combined.rs, seg }
+        //        )
+        //        // Safely filter by the RouteId since stops do not duplicate on SA routes
+        //        .Where(x => x.seg.RouteId == shift.RouteId)
+        //        .OrderBy(x => x.rs.StopSequence)
+        //        .Select(x => new
+        //        {
+        //            Name = x.td.Stop.Name,
+        //            SequenceNumber = x.rs.StopSequence,
+        //            PassengersDroppingOff = x.td.PassengersDroppingOff
+        //        })
+        //        .ToListAsync();
+
+        //    // OBSERVER TRIGGER: Broadcast the new queue to the specific shift group
+        //    string jsonQueue = System.Text.Json.JsonSerializer.Serialize(updatedQueue);
+
+        //    // --- ADD THIS LINE TO CHECK SERVER CONSOLE ---
+        //    string targetGroup = $"bus_{shift.BusId}";
+        //    Console.WriteLine($"[SignalR] Broadcasting 'QueueUpdated' to group: {targetGroup}");
+
+        //    // Broadcast the string to the bus group
+        //    await _hubContext.Clients.Group(targetGroup)
+        //    .SendAsync("QueueUpdated", jsonQueue);
+
+        //    // 4. Return the new queue to the Android app instantly
         //    return Ok(new
         //    {
-        //        message = "Cash sale recorded successfully.",
-        //        amountAdded = fareTotal,
-        //        newTotal = shift.TotalCashCollected,
-        //        receipts = issuedTickets
+        //        message = "Ticket Validated",
+        //        fareAmount = journey.TotalCost,
+        //        activeQueue = updatedQueue // The Android app uses this to redraw the UI
         //    });
         //}
 
