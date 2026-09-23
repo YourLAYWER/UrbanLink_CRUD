@@ -205,8 +205,11 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 request.StartStopId,
                 request.EndStopId,
                 secureFinalFare,
-                currentDateTime.AddMinutes(routingResult.TotalTimeMinutes)
+                currentDateTime.AddMinutes(routingResult.TotalTimeMinutes),
+                routingResult.Legs
+
             );
+            //
 
             _context.UserJourneys.Add(userJourney);
             await _context.SaveChangesAsync();
