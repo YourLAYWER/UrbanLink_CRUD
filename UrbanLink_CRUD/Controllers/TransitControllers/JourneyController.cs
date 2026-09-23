@@ -59,16 +59,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                                  {
                                      ticketReference = uj.TicketReference,
 
-                                     // Format the date exactly how your Android XML expects it
+                                     // Fetch the RouteId of the first leg of this journey
+                                     routeId = uj.Legs.OrderBy(l => l.SequenceOrder).Select(l => l.RouteId).FirstOrDefault(),
+
                                      date = uj.CreatedAt.ToString("dd MMM yyyy • HH:mm"),
-
-                                     // Raw number, appended on the Android side
                                      cost = uj.TotalCost,
-
-                                     // Dynamically build the "A -> B" string using the joined tables
                                      routeSummary = $"{startStop.Name} → {endStop.Name}",
-
-                                     // Convert the strong Enum back to a string and force uppercase
                                      status = uj.Status.ToString().ToUpper()
                                  }).ToListAsync();
 
