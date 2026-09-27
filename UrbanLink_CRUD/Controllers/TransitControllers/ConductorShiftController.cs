@@ -413,6 +413,53 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             });
         }
 
+        [HttpGet("active-shift-info")]
+        [Authorize(Roles = "Conductor, Driver")]
+        public async Task<IActionResult> GetActiveShiftInfo()
+        {
+            // 1. Extract the authenticated employee's ID from the JWT token claims
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int employeeId))
+                return Unauthorized(new { message = "Invalid token or user ID." });
+
+            // 2. Find the active shift for this employee (where ShiftEndTime is null)
+            var shift = await _context.ConductorShifts
+                .Include(s => s.Bus)
+                .Include(s => s.Route)
+                .FirstOrDefaultAsync(s => s.ConductorId == employeeId && s.ShiftEndTime == null);
+
+            if (shift == null)
+                return BadRequest(new { message = "No active shift found for this employee." });
+
+            // 3. Find the Start (Origin) Stop of the Route
+            // The start stop is the origin of the segment that is not any other segment's destination
+            var startSegment = await _context.RouteSegments
+                .Include(rs => rs.OriginStop)
+                .FirstOrDefaultAsync(rs => rs.RouteId == shift.RouteId &&
+                    !_context.RouteSegments.Any(other => other.RouteId == shift.RouteId && other.DestinationStopId == rs.OriginStopId));
+
+            // 4. Find the End (Terminal) Stop of the Route
+            // The end stop is the destination of the segment that is not any other segment's origin
+            var endSegment = await _context.RouteSegments
+                .Include(rs => rs.DestinationStop)
+                .FirstOrDefaultAsync(rs => rs.RouteId == shift.RouteId &&
+                    !_context.RouteSegments.Any(other => other.RouteId == shift.RouteId && other.OriginStopId == rs.DestinationStopId));
+
+            string startStopName = startSegment?.OriginStop?.Name ?? "Unknown Start";
+            string endStopName = endSegment?.DestinationStop?.Name ?? "Unknown Destination";
+
+            // 5. Return the payload matching your top status bar requirements
+            return Ok(new
+            {
+                busFleetNumber = shift.Bus?.FleetNumber ?? $"BUS-{shift.BusId}",
+                routeId = shift.RouteId,
+                routeName = shift.Route?.RouteName ?? "Unknown Route",
+                startStop = startStopName,
+                endStop = endStopName,
+                routeDisplay = $"{startStopName} → {endStopName}"
+            });
+        }
+
         [HttpGet("summary")]
         [Authorize(Roles = "Conductor, Driver, Admin")]
         public async Task<IActionResult> GetShiftSummary()
