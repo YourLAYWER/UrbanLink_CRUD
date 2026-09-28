@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UrbanLink_CRUD.Models.Data;
@@ -73,6 +74,27 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 message = $"Successfully retrieved {routes.Count} routes.",
                 data = routes
             });
+        }
+
+        [HttpGet("all-map-routes")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAllMapRoutes()
+        {
+            var routes = await _context.TransitRoutes
+                .Select(r => new
+                {
+                    routeId = r.Id,
+                    routeName = r.RouteName,
+                    transportType = r.TransportType.ToString(), // "Bus" or "Train"
+                    encodedPolyline = r.RouteMapPath
+                })
+                .Where(r => !string.IsNullOrEmpty(r.encodedPolyline))
+                .ToListAsync();
+
+            if (!routes.Any())
+                return NotFound(new { message = "No map routes available." });
+
+            return Ok(routes);
         }
 
         [HttpGet("routes")]
