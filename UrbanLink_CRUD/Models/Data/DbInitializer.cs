@@ -166,6 +166,11 @@ namespace UrbanLink_CRUD.Models.Data
             TransportType = TransitType.Bus,
             BaseFare = 15.00m,
             ProviderId = provider.Id, // Links directly to Algoa Bus!
+            RouteMapPath = "xwenEyhc{C\\LVLl@Td@PHBt@Z~@^x@\\@A@??A@?@??A@?@?@??@@?@??@@??@@??@@??@?@@@?@?@?@?@?@A??@TTNVLXJ^@JBH?ZAF?" +
+            "PCP?HEVSn@Kd@K\\Mj@JPHJFB@@|Bz@l@RHa@zCeNDULg@lAqFjAiFNs@nAeGJg@~@kELs@~CkNF[Ni@vCcKh@}Br@gCV{@h@wBH[`D}KFUzDeNnBuG~@cDHk" +
+            "@J_@XeAHY@IDODSDQDSFa@b@aD@a@h@qDRuA|@{FvA_L^wCBi@?i@e@_GCURQnAs@fB_AfAq@tBsA~@m@v@c@jCwA?C@C@C?CKk@WeADUSwAo@{DwA{IaAyFQ" +
+            "kAO{@_@_C_A_GI_@k@gDKi@Ii@a@aCSkAEYAOCWAWA[?OIQEUEMIUCKCE?E?E@G@A@CDEHERKZM\\GHEtBqAHSF]?Cj@uC`@sBFSJ[AA?AAA?AAA?AAA?C?A?" +
+            "A?Au@Ga@?]?a@BG@cAVi@Pk@Ti@Xi@Ze@b@e@b@KJUX",
             Schedules = new List<RouteSchedule>
             {
                 new RouteSchedule
@@ -190,6 +195,15 @@ namespace UrbanLink_CRUD.Models.Data
             TransportType = TransitType.Bus,
             BaseFare = 15.00m,
             ProviderId = provider.Id, // Links directly to Algoa Bus!
+             RouteMapPath = "`bhnEqyk{CKLA?WZKLKNq@|@ABEDeAnAWTCBgAjAq@n@MLy@x@c@`@o@l@WVIJo@t@W^eAtACDa@l@SXQ`@A@O^" +
+            "KXKZLLFDd@b@JH\\\\XZJJMDGBKJ?J]Ge@IOAWGMEIE[MGCAC?CAA?C?IDWBI?AH[BEBMHSNg@Rk@HWNc@Rg@R]DK~AwBTWLKh@g@BO@A@A?AX" +
+            "[t@y@hG_H@AhA{AP_@@CLi@FDJDVJB?BB\\]d@c@f@a@h@[@?f@Yj@Uh@QbAW~@SjBUx@[@Ap@c@P[HOHMNOPORMb@YLGfAw@PMjA_AZWZYPOF" +
+            "GNMNODERSX]RU^_@`@g@\\a@RQHKLIJGJCJEHAF?FAH?J?H@XFNFHDJFDFB@DDFFFJL\\t@k@l@g@h@i@l@aAXk@v@yBNe@HSNg@z@uC`AuDTg" +
+            "AFUpAoFLg@ZuAr@{Cf@sBTcAFOJw@^{A\\uATu@NWhC_IHYDO@O?WBu@EgA?EAa@?k@?E?U@QFYFOl@gBNc@fAiCd@mApBsEfBkE~BeGFSXiA@" +
+            "I\\sBj@}Df@kBDQd@uAt@{B?Al@_BXi@LSNS`@g@f@c@rBsBZa@NUBCVg@Rm@H[BGH_@BOHq@X}ENkAX}@Xg@JKNOlAsAVc@Xg@b@q@JMb@iAf" +
+            "@oB?CXaAd@aB@Gb@kB@EXkBv@iFVsBDQBKDERqAxAgJTmB@Eh@sBNc@^aAzAqEdB_En@sAdAkBjAqAf@k@`CoCHKNMpAiAvAkAhA_An@i@DEPMr" +
+            "@k@rC}CbAkAbAkArBwBjCyCHLhFlHf@z@nA`B`IvILLHJ\\Z\\PPHDBNFXLHBLBLBTDJBFBJFnAN|I~@jATvANB?`CT`@BJBLDJFFDFF?A@A?A" +
+            "@A@A@A@??A@?@A@?@?@?@?@?@?@??@@?@??@@??@@??@@??@@??@@@BCDCHCJAzL?dF@tEErB?T?rAA`C?\\DPDPHp@d@BBHDl@f@TJVFZ@lFA`@?`DA",
             Schedules = new List<RouteSchedule>
             {
                 new RouteSchedule

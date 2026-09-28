@@ -622,6 +622,10 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<int>("ProviderId")
                         .HasColumnType("int");
 
+                    b.Property<string>("RouteMapPath")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("RouteName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");

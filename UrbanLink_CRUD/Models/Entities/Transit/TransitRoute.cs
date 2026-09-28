@@ -9,6 +9,7 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
         public TransitType TransportType { get; set; } // "Bus", "Train"
         public decimal BaseFare { get; set; }
         public int ProviderId { get; set; }
+        public string RouteMapPath { get; set; } = string.Empty;
 
         // Navigation Properties
         public virtual TransitProvider? Provider { get; set; }
