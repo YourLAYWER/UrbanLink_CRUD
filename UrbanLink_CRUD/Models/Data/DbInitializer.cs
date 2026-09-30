@@ -134,7 +134,7 @@ namespace UrbanLink_CRUD.Models.Data
         new Stop { Name = "SANBS", Latitude = -33.958742, Longitude = 25.598896, IsTransferHub = false, IsActive = true },
         new Stop { Name = "BP", Latitude = -33.960893, Longitude = 25.602940, IsTransferHub = false, IsActive = true },
         new Stop { Name = "Gqeberha Main St", Latitude = -33.961569, Longitude = 25.624284, IsTransferHub = true, IsActive = true },
-        new Stop { Name = "Kings Beach", Latitude = -33.974106, Longitude = 25.653388, IsTransferHub = false, IsActive = true },
+        new Stop { Name = "Kings Beach", Latitude = -33.974092, Longitude = 25.643391, IsTransferHub = false, IsActive = true },
         new Stop { Name = "Shark Rock", Latitude = -33.981637, Longitude = 25.659304, IsTransferHub = false, IsActive = true },
         new Stop { Name = "NMU South Campus", Latitude = -34.009847, Longitude = 25.669267, IsTransferHub = false, IsActive = true }
             };

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UrbanLink_CRUD.Models.Data;
+using UrbanLink_CRUD.Models.Dtos.TransitDtos;
 using UrbanLink_CRUD.Models.Entities.Transit;
 
 namespace UrbanLink_CRUD.Controllers.TransitControllers
@@ -19,11 +20,28 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
         // GET: api/Stops
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Stop>>> GetStops()
+        public async Task<ActionResult<IEnumerable<StopDto>>> GetStops()
         {
-            return await _context.Stops
+            var stops = await _context.Stops
                 .AsNoTracking()
+                .Select(s => new StopDto
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Latitude = s.Latitude,
+                    Longitude = s.Longitude,
+                    IsTransferHub = s.IsTransferHub,
+                    IsActive = s.IsActive,
+                    // Drill through the navigation properties to get the RouteIds
+                    RouteIds = s.RouteStops
+                        .Where(rs => rs.RouteSegment != null)
+                        .Select(rs => rs.RouteSegment.RouteId)
+                        .Distinct() // Ensure no duplicates if a stop is on multiple segments of the same route
+                        .ToList()
+                })
                 .ToListAsync();
+
+            return Ok(stops);
         }
 
         // GET: api/Stops/5
