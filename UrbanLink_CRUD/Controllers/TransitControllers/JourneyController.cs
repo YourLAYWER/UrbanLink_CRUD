@@ -170,7 +170,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // DEBUG: Hardcode time to 10:00 AM today
             // ==========================================
             var today = DateTime.UtcNow.Date;
-            var currentDateTime = new DateTime(today.Year, today.Month, today.Day, 10, 0, 0, DateTimeKind.Utc);
+            var currentDateTime = DateTime.UtcNow;
+            //var currentDateTime = new DateTime(today.Year, today.Month, today.Day, 10, 0, 0, DateTimeKind.Utc);
 
             // 2. Execute the chosen algorithm
             var routeContext = new RoutingContext(request.StartStopId, request.EndStopId, currentDateTime);
@@ -215,17 +216,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 .Select(leg => leg.RouteId)
                 .Distinct()
                 .ToList();
-
-            //return Ok(new
-            //{
-            //    message = "Journey purchased successfully",
-            //    JourneyId = userJourney.JourneyID,
-            //    ticketReference = userJourney.TicketReference,
-            //    totalCost = secureFinalFare,
-            //    estimatedDurationMinutes = routingResult.TotalTimeMinutes,
-            //    estimatedArrivalTime = userJourney.EstimatedArrivalTime.ToString("HH:mm"),
-            //    ticketStatus = userJourney.Status.ToString()
-            //});
 
             return Ok(new
             {

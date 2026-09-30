@@ -130,13 +130,13 @@ namespace UrbanLink_CRUD.Models.Data
 
             var stops = new Stop[]
             {
-        new Stop { Name = "Greenacres Shopping Centre", Latitude = -33.9450, Longitude = 25.5720, IsTransferHub = true, IsActive = true },
-        new Stop { Name = "SABS", Latitude = -33.5736, Longitude = 25.3559, IsTransferHub = false, IsActive = true },
-        new Stop { Name = "BP", Latitude = -33.9550, Longitude = 25.6000, IsTransferHub = false, IsActive = true },
-        new Stop { Name = "Gqeberha Central Station", Latitude = -33.9608, Longitude = 25.6222, IsTransferHub = true, IsActive = true },
-        new Stop { Name = "KingsBeach", Latitude = -33.9750, Longitude = 25.6450, IsTransferHub = false, IsActive = true },
-        new Stop { Name = "Boardwalk", Latitude = -33.9825, Longitude = 25.6580, IsTransferHub = false, IsActive = true },
-        new Stop { Name = "NMU South Campus", Latitude = -34.0084, Longitude = 25.6698, IsTransferHub = false, IsActive = true }
+        new Stop { Name = "Greenacres Ring Rd 3", Latitude = -33.56585, Longitude = 25.34521, IsTransferHub = true, IsActive = true },
+        new Stop { Name = "SANBS", Latitude = -33.57315, Longitude = 25.35560, IsTransferHub = false, IsActive = true },
+        new Stop { Name = "BP", Latitude = -33.57392, Longitude = 25.36105, IsTransferHub = false, IsActive = true },
+        new Stop { Name = "Gqeberha Main St", Latitude = -33.57418, Longitude = 25.37276, IsTransferHub = true, IsActive = true },
+        new Stop { Name = "Kings Beach", Latitude = -33.58268, Longitude = 25.38362, IsTransferHub = false, IsActive = true },
+        new Stop { Name = "Shark Rock", Latitude = -33.58539, Longitude = 25.39335, IsTransferHub = false, IsActive = true },
+        new Stop { Name = "NMU South Campus", Latitude = -34.00354, Longitude = 25.40094, IsTransferHub = false, IsActive = true }
             };
 
             context.Stops.AddRange(stops);
@@ -178,14 +178,14 @@ namespace UrbanLink_CRUD.Models.Data
                     DaysOfOperation = "Weekdays",
                     FirstDepartureTime = new TimeSpan(6, 0, 0),
                     LastDepartureTime = new TimeSpan(20, 0, 0),
-                    FrequencyMinutes = 30
+                    FrequencyMinutes = 60
                 },
                 new RouteSchedule
                 {
                     DaysOfOperation = "Weekends",
                     FirstDepartureTime = new TimeSpan(8, 0, 0),
                     LastDepartureTime = new TimeSpan(18, 0, 0),
-                    FrequencyMinutes = 60
+                    FrequencyMinutes = 120
                 }
             }
         },
