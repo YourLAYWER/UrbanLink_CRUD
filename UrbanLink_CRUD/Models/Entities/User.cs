@@ -16,5 +16,15 @@ namespace UrbanLink_CRUD.Models.Entities
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        // ==========================================
+        // REFRESH TOKEN PROPERTIES
+        // ==========================================
+
+        // Stores the long-lived refresh token string
+        public string? RefreshToken { get; set; }
+
+        // Tracks when the refresh token becomes invalid
+        public DateTime? RefreshTokenExpiryTime { get; set; }
+
     }
 }
