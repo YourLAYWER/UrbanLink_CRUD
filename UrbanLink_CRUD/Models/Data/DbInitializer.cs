@@ -305,26 +305,31 @@ namespace UrbanLink_CRUD.Models.Data
 
             var routeStops = new RouteStop[]
             {
+                // Route 1 stops (Segments 0-2)
                 new RouteStop { SegmentId = segments[0].Id, StopId = stops[0].Id, StopSequence = 1 },
                 new RouteStop { SegmentId = segments[0].Id, StopId = stops[1].Id, StopSequence = 2 },
                 new RouteStop { SegmentId = segments[1].Id, StopId = stops[2].Id, StopSequence = 3 },
-                new RouteStop { SegmentId = segments[2].Id, StopId = stops[3].Id, StopSequence = 4 }, // Route 1 stops
+                new RouteStop { SegmentId = segments[2].Id, StopId = stops[3].Id, StopSequence = 4 }, 
+    
+                // Route 2 stops (Segments 3-5)
                 new RouteStop { SegmentId = segments[3].Id, StopId = stops[3].Id, StopSequence = 1 },
                 new RouteStop { SegmentId = segments[3].Id, StopId = stops[4].Id, StopSequence = 2 },
                 new RouteStop { SegmentId = segments[4].Id, StopId = stops[5].Id, StopSequence = 3 },
-                new RouteStop { SegmentId = segments[5].Id, StopId = stops[6].Id, StopSequence = 4 }, // Route 2 stops
+                new RouteStop { SegmentId = segments[5].Id, StopId = stops[6].Id, StopSequence = 4 }, 
+    
+                // Route 3 stops (Segments 6-16)
                 new RouteStop { SegmentId = segments[6].Id, StopId = stops[7].Id, StopSequence = 1 },
-                new RouteStop { SegmentId = segments[7].Id, StopId = stops[8].Id, StopSequence = 2 },
-                new RouteStop { SegmentId = segments[8].Id, StopId = stops[9].Id, StopSequence = 3 },
-                new RouteStop { SegmentId = segments[9].Id, StopId = stops[10].Id, StopSequence = 4 },
-                new RouteStop { SegmentId = segments[10].Id, StopId = stops[11].Id, StopSequence = 5 },
-                new RouteStop { SegmentId = segments[11].Id, StopId = stops[12].Id, StopSequence = 6 },
-                new RouteStop { SegmentId = segments[12].Id, StopId = stops[13].Id, StopSequence = 7 },
-                new RouteStop { SegmentId = segments[13].Id, StopId = stops[14].Id, StopSequence = 8 },
-                new RouteStop { SegmentId = segments[14].Id, StopId = stops[15].Id, StopSequence = 9 },
-                new RouteStop { SegmentId = segments[15].Id, StopId = stops[16].Id, StopSequence = 10 },
-                new RouteStop { SegmentId = segments[16].Id, StopId = stops[17].Id, StopSequence = 11 },
-                new RouteStop { SegmentId = segments[17].Id, StopId = stops[18].Id, StopSequence = 12 }, // Route 3 stops
+                new RouteStop { SegmentId = segments[6].Id, StopId = stops[8].Id, StopSequence = 2 },
+                new RouteStop { SegmentId = segments[7].Id, StopId = stops[9].Id, StopSequence = 3 },
+                new RouteStop { SegmentId = segments[8].Id, StopId = stops[10].Id, StopSequence = 4 },
+                new RouteStop { SegmentId = segments[9].Id, StopId = stops[11].Id, StopSequence = 5 },
+                new RouteStop { SegmentId = segments[10].Id, StopId = stops[12].Id, StopSequence = 6 },
+                new RouteStop { SegmentId = segments[11].Id, StopId = stops[13].Id, StopSequence = 7 },
+                new RouteStop { SegmentId = segments[12].Id, StopId = stops[14].Id, StopSequence = 8 },
+                new RouteStop { SegmentId = segments[13].Id, StopId = stops[15].Id, StopSequence = 9 },
+                new RouteStop { SegmentId = segments[14].Id, StopId = stops[16].Id, StopSequence = 10 },
+                new RouteStop { SegmentId = segments[15].Id, StopId = stops[17].Id, StopSequence = 11 },
+                new RouteStop { SegmentId = segments[16].Id, StopId = stops[18].Id, StopSequence = 12 },
             };
             context.RouteStops.AddRange(routeStops);
             context.SaveChanges();
