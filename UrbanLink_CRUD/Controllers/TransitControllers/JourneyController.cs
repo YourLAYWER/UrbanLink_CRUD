@@ -112,7 +112,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             decimal finalFare = fareStrategy.CalculateFare(fareContext);
 
             // ==========================================
-            // BACKWARD MATH LOGIC (Unchanged)
+            // BACKWARD MATH LOGIC
             // ==========================================
             var finalArrivalTime = currentDateTime.AddMinutes(routingResult.TotalTimeMinutes);
             int physicalTravelTime = routingResult.Legs.Sum(l => l.LegDurationMinutes);
@@ -170,8 +170,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // DEBUG: Hardcode time to 10:00 AM today
             // ==========================================
             var today = DateTime.UtcNow.Date;
-            var currentDateTime = DateTime.UtcNow;
-            //var currentDateTime = new DateTime(today.Year, today.Month, today.Day, 10, 0, 0, DateTimeKind.Utc);
+            //var currentDateTime = DateTime.UtcNow;
+            var currentDateTime = new DateTime(today.Year, today.Month, today.Day, 10, 0, 0, DateTimeKind.Utc);
 
             // 2. Execute the chosen algorithm
             var routeContext = new RoutingContext(request.StartStopId, request.EndStopId, currentDateTime);
@@ -230,6 +230,56 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             });
         }
 
+        //[HttpGet("tickets/{ticketReference}/status")]
+        //public async Task<IActionResult> GetTicketStatus(Guid ticketReference)
+        //{
+        //    var journey = await _context.Journeys
+        //        .Include(j => j.Legs)
+        //        .FirstOrDefaultAsync(j => j.TicketReference == ticketReference);
+
+        //    if (journey == null)
+        //        return NotFound();
+
+        //    // 1. Find routes the passenger HAS ALREADY scanned
+        //    var completedRouteIds = journey.Legs
+        //        .Where(l => l.RedeemedAt != null)
+        //        .Select(l => l.RouteId)
+        //        .ToList();
+
+        //    // 2. Find routes they HAVEN'T ridden yet
+        //    var upcomingRouteIds = journey.Legs
+        //        .Where(l => l.RedeemedAt == null)
+        //        .Select(l => l.RouteId)
+        //        .ToList();
+
+        //    var expirationWindow = DateTime.UtcNow.AddHours(-2);
+
+        //    // 3. Only check for delays on UPCOMING routes
+        //    var activeAlert = await _context.IncidentReports
+        //        .Include(i => i.ConductorShift)
+        //        .Where(i => upcomingRouteIds.Contains(i.ConductorShift.RouteId)
+        //                 && i.Status == IncidentStatus.Open
+        //                 && i.Category == IncidentCategory.Delay
+        //                 && i.ReportedAt >= expirationWindow)
+        //        .OrderByDescending(i => i.ReportedAt)
+        //        .Select(i => new
+        //        {
+        //            message = i.Description,
+        //            reportedAt = i.ReportedAt,
+        //            isEmergency = i.IsEmergency
+        //        })
+        //        .FirstOrDefaultAsync();
+
+        //    // 4. Return everything the Android app needs to manage its state
+        //    return Ok(new
+        //    {
+        //        hasDelay = activeAlert != null,
+        //        alert = activeAlert,
+        //        ticketStatus = journey.Status.ToString().ToUpper(), // "ACTIVE" or "COMPLETED"
+        //        completedRouteIds = completedRouteIds // <-- The unsubscription payload!
+        //    });
+        //}
+
         [HttpGet("tickets/{ticketReference}/status")]
         public async Task<IActionResult> GetTicketStatus(Guid ticketReference)
         {
@@ -254,9 +304,10 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
             var expirationWindow = DateTime.UtcNow.AddHours(-2);
 
-            // 3. Only check for delays on UPCOMING routes
+            // 3. Drill through Shift -> Bus to get the physical vehicle details
             var activeAlert = await _context.IncidentReports
                 .Include(i => i.ConductorShift)
+                    .ThenInclude(cs => cs.Bus) //  Grab the Bus attached to this shift
                 .Where(i => upcomingRouteIds.Contains(i.ConductorShift.RouteId)
                          && i.Status == IncidentStatus.Open
                          && i.Category == IncidentCategory.Delay
@@ -266,7 +317,9 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 {
                     message = i.Description,
                     reportedAt = i.ReportedAt,
-                    isEmergency = i.IsEmergency
+                    isEmergency = i.IsEmergency,
+                    busFleetNumber = i.ConductorShift.Bus != null ? i.ConductorShift.Bus.FleetNumber : "Unknown Bus",
+                    busLicensePlate = i.ConductorShift.Bus != null ? i.ConductorShift.Bus.LicensePlate : ""
                 })
                 .FirstOrDefaultAsync();
 
@@ -275,8 +328,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             {
                 hasDelay = activeAlert != null,
                 alert = activeAlert,
-                ticketStatus = journey.Status.ToString().ToUpper(), // "ACTIVE" or "COMPLETED"
-                completedRouteIds = completedRouteIds // <-- The unsubscription payload!
+                ticketStatus = journey.Status.ToString().ToUpper(),
+                completedRouteIds = completedRouteIds
             });
         }
 
