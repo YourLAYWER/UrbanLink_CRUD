@@ -7,9 +7,7 @@ using Microsoft.OpenApi;
 using System.Text;
 using System.Text.Json.Serialization;
 using UrbanLink_CRUD.Models.Data;
-<<<<<<< HEAD
 using UrbanLink_CRUD.Services.RoutingLogic;
-=======
 using UrbanLink_CRUD.Models.Domain;
 using UrbanLink_CRUD.Models.Domain.Fare;
 using UrbanLink_CRUD.Models.Domain.Incident;
@@ -17,7 +15,6 @@ using UrbanLink_CRUD.Models.Domain.Incident.FireBase;
 using UrbanLink_CRUD.Models.Domain.Journey;
 using UrbanLink_CRUD.Services.RoutingLogic; // 1. Updated Namespace
 using UrbanLink_CRUD.Services.Workers;
->>>>>>> b4ec756689e9b1e4425a0a35182104c395881c37
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +31,6 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
-<<<<<<< HEAD
 // CORS Policy
 builder.Services.AddCors(options =>
 {
@@ -45,7 +41,6 @@ builder.Services.AddCors(options =>
 });
 
 // Configure JWT Authentication
-=======
 // --- CORS: allow the React admin UI (Vite dev server) to call this API ---
 builder.Services.AddCors(options =>
 {
@@ -59,7 +54,6 @@ builder.Services.AddCors(options =>
 });
 
 // 2. Configure JWT Authentication
->>>>>>> b4ec756689e9b1e4425a0a35182104c395881c37
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
@@ -115,7 +109,6 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContext<ULDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
 
-<<<<<<< HEAD
 // Custom Dependency Injection Services
 builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
 
@@ -123,7 +116,6 @@ builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
 // =========================================================================
 // 2. BUILD THE APPLICATION (Locks builder.Services)
 // =========================================================================
-=======
 // Thise line enables the pattern so it can be injected into any controller or service
 builder.Services.AddScoped<IFareStrategyFactory, FareStrategyFactory>();
 builder.Services.AddSingleton<IRoutingStrategyFactory, RoutingStrategyFactory>();
@@ -167,7 +159,6 @@ if (FirebaseApp.DefaultInstance == null)
 builder.Services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();
 //---------------End-------------------
 
->>>>>>> b4ec756689e9b1e4425a0a35182104c395881c37
 var app = builder.Build();
 
 
@@ -182,38 +173,17 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ULDBContext>();
-<<<<<<< HEAD
         var routingService = services.GetRequiredService<ITransitRoutingService>();
 
-        var graphEdges = context.RouteSegments
-            .Select(dbSegment => new GraphEdge(
-                dbSegment.OriginStopId,
-                dbSegment.DestinationStopId,
-                dbSegment.RouteId,
-                dbSegment.TravelTimeMinutes,
-                dbSegment.Route.BaseFare
-            ))
-=======
-
-        // 1. SEED TRANSIT TABLES FIRST
-        DbInitializer.SeedAdminUser(context);
-        DbInitializer.SeedBuses(context);
-        DbInitializer.SeedTransitProviders(context);
-        DbInitializer.SeedTransitSystem(context);
-
-        var routingService = services.GetRequiredService<ITransitRoutingService>();
-
-        // 2. Fetch the segments from the database into memory
-        // NEW: We now eagerly load the Schedules using .ThenInclude()
+        // Fetch segments, eagerly loading each route's schedules
         var dbSegments = context.RouteSegments
             .Include(s => s.Route)
                 .ThenInclude(r => r.Schedules)
->>>>>>> b4ec756689e9b1e4425a0a35182104c395881c37
             .ToList();
 
         var graphEdges = new List<GraphEdge>();
 
-        // 3. DYNAMIC OFFSET CALCULATION
+        // Dynamic offset calculation per route
         foreach (var routeGroup in dbSegments.GroupBy(s => s.RouteId))
         {
             var routeSegments = routeGroup.ToList();
@@ -225,33 +195,26 @@ using (var scope = app.Services.CreateScope())
 
             while (currentSegment != null)
             {
-                // NEW: Using object initialization to map exactly to the new GraphEdge properties
                 graphEdges.Add(new GraphEdge(
-                currentSegment.OriginStopId,
-                currentSegment.DestinationStopId,
-                currentSegment.RouteId,
-                currentSegment.TravelTimeMinutes,
-                currentSegment.Route.BaseFare,
-                currentOffset,
-                currentSegment.Route.Schedules.ToList() // Injecting the full list of schedules!
+                    currentSegment.OriginStopId,
+                    currentSegment.DestinationStopId,
+                    currentSegment.RouteId,
+                    currentSegment.TravelTimeMinutes,
+                    currentSegment.Route.BaseFare,
+                    currentOffset,
+                    currentSegment.Route.Schedules.ToList()
                 ));
 
                 currentOffset += currentSegment.TravelTimeMinutes;
-
                 currentSegment = routeSegments.FirstOrDefault(s => s.OriginStopId == currentSegment.DestinationStopId);
             }
         }
 
-        // 4. Get the hubs
         var hubIds = context.Stops
             .Where(s => s.IsTransferHub)
             .Select(s => s.Id)
             .ToList();
 
-<<<<<<< HEAD
-=======
-        // 5. Feed the dynamically mapped records into the Singleton engine
->>>>>>> b4ec756689e9b1e4425a0a35182104c395881c37
         routingService.InitializeGraph(graphEdges, hubIds);
     }
     catch (Exception ex)
@@ -269,14 +232,9 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<ULDBContext>();
 
         DbInitializer.SeedAdminUser(context);
-
+        DbInitializer.SeedBuses(context);
         DbInitializer.SeedTransitProviders(context);
-<<<<<<< HEAD
         DbInitializer.SeedTransitSystem(context);
-=======
-        DbInitializer.SeedTransitSystem(context); // Call the new seeding method for transit data
-
->>>>>>> b4ec756689e9b1e4425a0a35182104c395881c37
     }
     catch (Exception ex)
     {
@@ -299,12 +257,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-<<<<<<< HEAD
 // CORS must be executed before Authentication and Authorization
 app.UseCors("AllowReactApp");
 
 // Authentication MUST strictly come before Authorization
-=======
 
 // Disabled UseHttpsRedirection to allow access for the Mobile application
 // app.UseHttpsRedirection();
@@ -314,7 +270,6 @@ app.UseCors("AllowReactApp");
 app.UseCors("AdminUI");
 
 // These two MUST appear in this exact order, Authentication first, then Authorization. Otherwise, you will get 401 Unauthorized errors.
->>>>>>> b4ec756689e9b1e4425a0a35182104c395881c37
 app.UseAuthentication();
 app.UseAuthorization();
 
