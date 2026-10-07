@@ -112,7 +112,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             decimal finalFare = fareStrategy.CalculateFare(fareContext);
 
             // ==========================================
-            // BACKWARD MATH LOGIC (Unchanged)
+            // BACKWARD MATH LOGIC
             // ==========================================
             var finalArrivalTime = currentDateTime.AddMinutes(routingResult.TotalTimeMinutes);
             int physicalTravelTime = routingResult.Legs.Sum(l => l.LegDurationMinutes);
@@ -170,8 +170,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // DEBUG: Hardcode time to 10:00 AM today
             // ==========================================
             var today = DateTime.UtcNow.Date;
-            var currentDateTime = DateTime.UtcNow;
-            //var currentDateTime = new DateTime(today.Year, today.Month, today.Day, 10, 0, 0, DateTimeKind.Utc);
+            //var currentDateTime = DateTime.UtcNow;
+            var currentDateTime = new DateTime(today.Year, today.Month, today.Day, 10, 0, 0, DateTimeKind.Utc);
 
             // 2. Execute the chosen algorithm
             var routeContext = new RoutingContext(request.StartStopId, request.EndStopId, currentDateTime);
@@ -307,7 +307,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // 3. Drill through Shift -> Bus to get the physical vehicle details
             var activeAlert = await _context.IncidentReports
                 .Include(i => i.ConductorShift)
-                    .ThenInclude(cs => cs.Bus) // <-- ADD THIS: Grab the Bus attached to this shift
+                    .ThenInclude(cs => cs.Bus) //  Grab the Bus attached to this shift
                 .Where(i => upcomingRouteIds.Contains(i.ConductorShift.RouteId)
                          && i.Status == IncidentStatus.Open
                          && i.Category == IncidentCategory.Delay
@@ -318,7 +318,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                     message = i.Description,
                     reportedAt = i.ReportedAt,
                     isEmergency = i.IsEmergency,
-                    // <-- ADD THESE: Safely extract the bus details
                     busFleetNumber = i.ConductorShift.Bus != null ? i.ConductorShift.Bus.FleetNumber : "Unknown Bus",
                     busLicensePlate = i.ConductorShift.Bus != null ? i.ConductorShift.Bus.LicensePlate : ""
                 })

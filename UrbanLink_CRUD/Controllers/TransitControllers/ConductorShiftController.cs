@@ -456,7 +456,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 routeName = shift.Route?.RouteName ?? "Unknown Route",
                 startStop = startStopName,
                 endStop = endStopName,
-                routeDisplay = $"{startStopName} → {endStopName}"
+                routeDisplay = $"{startStopName} → {endStopName}",
+                baseFare = shift.Route?.BaseFare ?? 0.00m
             });
         }
 
