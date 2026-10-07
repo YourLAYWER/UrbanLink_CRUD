@@ -166,15 +166,19 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using Microsoft.OpenApi;
 using System.Text;
 using System.Text.Json.Serialization;
 using UrbanLink_CRUD.Models.Data;
-using UrbanLink_CRUD.Services.RoutingLogic; // 1. Updated Namespace
+using UrbanLink_CRUD.Services.RoutingLogic;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add Controllers AND configure JSON Options (Done once)
+// =========================================================================
+// 1. REGISTER SERVICES (builder.Services.Add...)
+//    All service registrations MUST happen BEFORE calling builder.Build()
+// =========================================================================
+
+// Controllers & JSON Options
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -182,13 +186,21 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
-// 2. Configure JWT Authentication
+// CORS Policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        policy => policy.WithOrigins("http://localhost:5173")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod());
+});
+
+// Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
 builder.Services.AddAuthentication(options =>
 {
-    // Set JWT as the default authentication scheme
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
@@ -207,13 +219,13 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Configure OpenAPI
+// Configure OpenAPI / Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "UrbanLink API", Version = "v1" });
 
-    // 1. Define the Security Scheme
+    // Define the Security Scheme
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. \r\n\r\n" +
@@ -225,47 +237,50 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer"
     });
 
-    // 2. Apply the Security Requirement globally 
+    // Apply the Security Requirement globally 
     c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         {
-            // Pass the document context to the reference
             new OpenApiSecuritySchemeReference("Bearer", document),
             new List<string>()
         }
     });
 });
 
-// Tell the application about your Database Context
+// Database Context
 builder.Services.AddDbContext<ULDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
 
-// --- REGISTERING THE SERVICE ---
-// 2. Updated DI Registration to use the Interface
+// Custom Dependency Injection Services
 builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
 
+
+// =========================================================================
+// 2. BUILD THE APPLICATION (Locks builder.Services)
+// =========================================================================
 var app = builder.Build();
 
-// --- INITIALIZING THE GRAPH ON STARTUP ---
-// We create a temporary scope just to fetch the initial data from SQL Server
+
+// =========================================================================
+// 3. STARTUP TASKS (Graph Initialization & Database Seeding)
+// =========================================================================
+
+// Initialize Graph on Startup
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
         var context = services.GetRequiredService<ULDBContext>();
-
-        // 3. Updated service resolution to use the Interface
         var routingService = services.GetRequiredService<ITransitRoutingService>();
 
-        // 1. Fetch from DB and immediately map to the lightweight algorithm record
         var graphEdges = context.RouteSegments
             .Select(dbSegment => new GraphEdge(
                 dbSegment.OriginStopId,
                 dbSegment.DestinationStopId,
                 dbSegment.RouteId,
                 dbSegment.TravelTimeMinutes,
-                dbSegment.Route.BaseFare // Pulls the flat rate directly from the Route table
+                dbSegment.Route.BaseFare
             ))
             .ToList();
 
@@ -274,7 +289,6 @@ using (var scope = app.Services.CreateScope())
             .Select(s => s.Id)
             .ToList();
 
-        // 2. Feed the safe records into the Singleton engine
         routingService.InitializeGraph(graphEdges, hubIds);
     }
     catch (Exception ex)
@@ -283,7 +297,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// --- THIS BLOCK RUNS THE SEEDER ---
+// Run Database Seeder
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -291,40 +305,35 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<ULDBContext>();
 
-        // Optional but recommended: Ensure the database exists and migrations are applied
-        // context.Database.Migrate(); 
-
-        // Call your seeding method
         DbInitializer.SeedAdminUser(context);
         DbInitializer.SeedTransitProviders(context);
-        DbInitializer.SeedTransitSystem(context); // Call the new seeding method for transit data
+        DbInitializer.SeedTransitSystem(context);
     }
     catch (Exception ex)
     {
-        // Log the error if seeding fails (e.g., database isn't running)
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while seeding the database.");
     }
 }
 
-// -----------------------------------------
-// Configure the HTTP request pipeline.
+
+// =========================================================================
+// 4. HTTP REQUEST PIPELINE MIDDLEWARE
+// =========================================================================
+
 if (app.Environment.IsDevelopment())
 {
-    // Generate the Swagger JSON document
     app.UseSwagger();
-
-    // Serve the Swagger UI web page
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "UrbanLink API v1");
     });
 }
 
-// Disabled UseHttpsRedirection to allow access for the Mobile application
-// app.UseHttpsRedirection();
+// CORS must be executed before Authentication and Authorization
+app.UseCors("AllowReactApp");
 
-// These two MUST appear in this exact order, Authentication first, then Authorization. Otherwise, you will get 401 Unauthorized errors.
+// Authentication MUST strictly come before Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
