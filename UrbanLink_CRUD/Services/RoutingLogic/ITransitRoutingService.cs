@@ -1,8 +1,10 @@
-﻿namespace UrbanLink_CRUD.Services.RoutingLogic
+﻿using static UrbanLink_CRUD.Services.RoutingLogic.RoutingContex;
+
+namespace UrbanLink_CRUD.Services.RoutingLogic
 {
     public interface ITransitRoutingService
     {
         void InitializeGraph(IEnumerable<GraphEdge> edges, IEnumerable<int> transferHubIds);
-        RoutingResult ComputeFastestRoute(int startStopId, int targetStopId);
+        RoutingResult ComputeRoute(int startStopId, int targetStopId, DateTime userDepartureTime, string preference = "fastest");
     }
 }

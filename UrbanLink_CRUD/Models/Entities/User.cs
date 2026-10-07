@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using UrbanLink_CRUD.Models.Enums;
 
 namespace UrbanLink_CRUD.Models.Entities
 {
@@ -11,15 +12,19 @@ namespace UrbanLink_CRUD.Models.Entities
 
 
         // CommuterProfile can be (e.g ...,"Standard", "Student", or "Pensioner")
-        public string CommuterProfile { get; set; } = "Standard";
+        public Role Role { get; set; } = Role.StandardUser;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        // ==========================================
+        // REFRESH TOKEN PROPERTIES
+        // ==========================================
 
-        // Navigation Properties ( A user has many tickets and orders)
-        //public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
-        //public ICollection<Order> Orders { get; set; } = new List<Order>();
+        // Stores the long-lived refresh token string
+        public string? RefreshToken { get; set; }
 
+        // Tracks when the refresh token becomes invalid
+        public DateTime? RefreshTokenExpiryTime { get; set; }
 
     }
 }

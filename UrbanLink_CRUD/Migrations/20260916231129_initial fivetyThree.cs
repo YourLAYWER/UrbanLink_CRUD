@@ -5,7 +5,7 @@
 namespace UrbanLink_CRUD.Migrations
 {
     /// <inheritdoc />
-    public partial class start : Migration
+    public partial class initialfivetyThree : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

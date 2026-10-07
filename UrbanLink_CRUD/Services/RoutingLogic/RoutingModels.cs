@@ -1,6 +1,9 @@
-﻿namespace UrbanLink_CRUD.Services.RoutingLogic
+﻿using UrbanLink_CRUD.Models.Entities.Transit;
+
+namespace UrbanLink_CRUD.Services.RoutingLogic
 {
-    public record GraphEdge(int OriginStopId, int DestinationStopId, int RouteId, int TravelTimeMinutes, decimal RouteBaseFare);
+    public record GraphEdge(int OriginStopId, int DestinationStopId, int RouteId, int TravelTimeMinutes,
+        decimal RouteBaseFare, int OffsetFromRouteStart, List<RouteSchedule> Schedules);
 
     public record SearchState(int StopId, int CurrentRouteId, int TotalTimeMinutes);
 

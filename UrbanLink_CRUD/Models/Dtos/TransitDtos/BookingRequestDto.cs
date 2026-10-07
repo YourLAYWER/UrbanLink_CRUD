@@ -4,5 +4,7 @@
     {
         public int StartStopId { get; set; }
         public int EndStopId { get; set; }
+
+        // public string Preference { get; set; }
     }
 }

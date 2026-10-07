@@ -12,8 +12,8 @@ using UrbanLink_CRUD.Models.Data;
 namespace UrbanLink_CRUD.Migrations
 {
     [DbContext(typeof(ULDBContext))]
-    [Migration("20260805223015_start")]
-    partial class start
+    [Migration("20260816020902_changed route")]
+    partial class changedroute
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -378,10 +378,15 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<int>("StopId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("RouteSegmentId")
+                        .HasColumnType("int");
+
                     b.Property<int>("StopSequence")
                         .HasColumnType("int");
 
                     b.HasKey("SegmentId", "StopId");
+
+                    b.HasIndex("RouteSegmentId");
 
                     b.HasIndex("StopId");
 
@@ -473,6 +478,15 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<decimal>("BaseFare")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<TimeSpan>("FirstDepartureTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("FrequencyMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("LastDepartureTime")
+                        .HasColumnType("time");
+
                     b.Property<int>("ProviderId")
                         .HasColumnType("int");
 
@@ -488,7 +502,7 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.HasIndex("ProviderId");
 
-                    b.ToTable("TransitRoutes");
+                    b.ToTable("TransitRoute", (string)null);
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.User", b =>
@@ -708,6 +722,10 @@ namespace UrbanLink_CRUD.Migrations
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteStop", b =>
                 {
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.RouteSegment", null)
+                        .WithMany("RouteStops")
+                        .HasForeignKey("RouteSegmentId");
+
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.RouteSegment", "RouteSegment")
                         .WithMany()
                         .HasForeignKey("SegmentId")
@@ -758,6 +776,11 @@ namespace UrbanLink_CRUD.Migrations
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Journey", b =>
                 {
                     b.Navigation("Legs");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteSegment", b =>
+                {
+                    b.Navigation("RouteStops");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Stop", b =>
