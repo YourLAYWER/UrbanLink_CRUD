@@ -178,6 +178,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             return NoContent();
         }
 
+
         [HttpGet("all-map-routes")]
         [AllowAnonymous]
         public async Task<IActionResult> GetAllMapRoutes()
@@ -198,6 +199,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
             return Ok(routes);
         }
+
 
         // DELETE: api/TransitRoute/5
         [HttpDelete("{id:int}")]
