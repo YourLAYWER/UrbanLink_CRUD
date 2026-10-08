@@ -178,27 +178,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             return NoContent();
         }
 
-        [HttpGet("all-map-routes")]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetAllMapRoutes()
-        {
-            var routes = await _context.TransitRoutes
-                .Select(r => new
-                {
-                    routeId = r.Id,
-                    routeName = r.RouteName,
-                    transportType = r.TransportType.ToString(), // "Bus" or "Train"
-                    encodedPolyline = r.RouteMapPath
-                })
-                .Where(r => !string.IsNullOrEmpty(r.encodedPolyline))
-                .ToListAsync();
-
-            if (!routes.Any())
-                return NotFound(new { message = "No map routes available." });
-
-            return Ok(routes);
-        }
-
         // DELETE: api/TransitRoute/5
         [HttpDelete("{id:int}")]
         [Authorize(Roles = "Admin")]
