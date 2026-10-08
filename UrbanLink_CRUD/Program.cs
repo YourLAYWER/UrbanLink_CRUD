@@ -7,47 +7,53 @@ using Microsoft.OpenApi;
 using System.Text;
 using System.Text.Json.Serialization;
 using UrbanLink_CRUD.Models.Data;
+using UrbanLink_CRUD.Services.RoutingLogic;
 using UrbanLink_CRUD.Models.Domain;
 using UrbanLink_CRUD.Models.Domain.Fare;
 using UrbanLink_CRUD.Models.Domain.Incident;
 using UrbanLink_CRUD.Models.Domain.Incident.FireBase;
 using UrbanLink_CRUD.Models.Domain.Journey;
-using UrbanLink_CRUD.Services.RoutingLogic;
+using UrbanLink_CRUD.Services.RoutingLogic; // 1. Updated Namespace
 using UrbanLink_CRUD.Services.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // =========================================================================
-// 1. REGISTER SERVICES
+// 1. REGISTER SERVICES (builder.Services.Add...)
+//    All service registrations MUST happen BEFORE calling builder.Build()
 // =========================================================================
 
 // Controllers & JSON Options
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
+        // Ignore cycles to prevent infinite loops during serialization
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
-// CORS Policies
-var corsPolicyName = "AllowReactApp";
+// CORS Policy
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(corsPolicyName, policy =>
-    {
-        policy.WithOrigins(
-                "http://localhost:5173",  // Vite dev server
-                "https://localhost:5173",
-                "http://127.0.0.1:5173",
-                "http://localhost:3000",  // React App default
-                "https://localhost:3000"
-               )
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials(); // Required for SignalR WebSockets and cookies
-    });
+    options.AddPolicy("AllowReactApp",
+        policy => policy.WithOrigins("http://localhost:5173")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod());
 });
 
 // Configure JWT Authentication
+// --- CORS: allow the React admin UI (Vite dev server) to call this API ---
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AdminUI", policy => policy
+        .WithOrigins(
+            "http://localhost:5173",
+            "http://127.0.0.1:5173")
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials()); // needed for the SignalR hub (/transithub)
+});
+
+// 2. Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
@@ -77,6 +83,7 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "UrbanLink API", Version = "v1" });
 
+    // Define the Security Scheme
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. \r\n\r\n" +
@@ -88,10 +95,11 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer"
     });
 
-    c.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
+    // Apply the Security Requirement globally 
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecuritySchemeReference("Bearer"),
+            new OpenApiSecuritySchemeReference("Bearer", document),
             new List<string>()
         }
     });
@@ -101,62 +109,73 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContext<ULDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
 
-// Dependency Injection Registrations
+// Custom Dependency Injection Services
+builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
+
+
+// =========================================================================
+// 2. BUILD THE APPLICATION (Locks builder.Services)
+// =========================================================================
+// Thise line enables the pattern so it can be injected into any controller or service
 builder.Services.AddScoped<IFareStrategyFactory, FareStrategyFactory>();
 builder.Services.AddSingleton<IRoutingStrategyFactory, RoutingStrategyFactory>();
 builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
 builder.Services.AddSingleton<IJourneyFactory, JourneyFactory>();
 
-// Incident Strategies
+//------Registering IncidentReport------
+// Register the specific strategies
 builder.Services.AddScoped<IIncidentStrategy, DelayIncidentStrategy>();
+// builder.Services.AddScoped<IIncidentStrategy, MedicalIncidentStrategy>(); // Add others as you build them
+
+// Register the resolver itself
 builder.Services.AddScoped<IncidentStrategyResolver>();
+//------End--------
 
-// Register Background Services & SignalR
+// --- REGISTERING THE SERVICE ---
+// 2. Updated DI Registration to use the Interface
+builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
+
+
+// Register the background worker
 builder.Services.AddHostedService<TicketExpirationWorker>();
-builder.Services.AddSignalR();
 
-// Firebase Admin SDK Configuration (Safely Wrapped)
+builder.Services.AddSignalR(); // for SignalR
+
+
+//-------Firebase Configuration----------
+// 1. Initialize Firebase Admin SDK
 var firebaseKeyPath = Path.Combine(builder.Environment.ContentRootPath, "firebase_admin_sdk.json");
-if (File.Exists(firebaseKeyPath))
+
+// Ensure it only initializes once
+if (FirebaseApp.DefaultInstance == null)
 {
-    if (FirebaseApp.DefaultInstance == null)
+    FirebaseApp.Create(new AppOptions()
     {
-        FirebaseApp.Create(new AppOptions()
-        {
-            Credential = GoogleCredential.FromFile(firebaseKeyPath)
-        });
-    }
-}
-else
-{
-    Console.WriteLine("[Warning] firebase_admin_sdk.json not found. Skipping Firebase Admin SDK initialization for local execution.");
+        Credential = GoogleCredential.FromFile(firebaseKeyPath)
+    });
 }
 
+// 2. Register the Notification Service
 builder.Services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();
+//---------------End-------------------
 
-// =========================================================================
-// 2. BUILD THE APPLICATION
-// =========================================================================
 var app = builder.Build();
+
 
 // =========================================================================
 // 3. STARTUP TASKS (Graph Initialization & Database Seeding)
 // =========================================================================
+
+// Initialize Graph on Startup
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
         var context = services.GetRequiredService<ULDBContext>();
-
-        // Seed transit tables
-        DbInitializer.SeedAdminUser(context);
-        DbInitializer.SeedBuses(context);
-        DbInitializer.SeedTransitProviders(context);
-        DbInitializer.SeedTransitSystem(context);
-
         var routingService = services.GetRequiredService<ITransitRoutingService>();
 
+        // Fetch segments, eagerly loading each route's schedules
         var dbSegments = context.RouteSegments
             .Include(s => s.Route)
                 .ThenInclude(r => r.Schedules)
@@ -164,6 +183,7 @@ using (var scope = app.Services.CreateScope())
 
         var graphEdges = new List<GraphEdge>();
 
+        // Dynamic offset calculation per route
         foreach (var routeGroup in dbSegments.GroupBy(s => s.RouteId))
         {
             var routeSegments = routeGroup.ToList();
@@ -199,14 +219,35 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while initializing the graph or seeding the database.");
+        Console.WriteLine($"An error occurred initializing the transit graph: {ex.Message}");
     }
 }
+
+// Run Database Seeder
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ULDBContext>();
+
+        DbInitializer.SeedAdminUser(context);
+        DbInitializer.SeedBuses(context);
+        DbInitializer.SeedTransitProviders(context);
+        DbInitializer.SeedTransitSystem(context);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while seeding the database.");
+    }
+}
+
 
 // =========================================================================
 // 4. HTTP REQUEST PIPELINE MIDDLEWARE
 // =========================================================================
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -216,13 +257,23 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// CORS MUST strictly come before Authentication & Authorization
-app.UseCors(corsPolicyName);
+// CORS must be executed before Authentication and Authorization
+app.UseCors("AllowReactApp");
 
+// Authentication MUST strictly come before Authorization
+
+// Disabled UseHttpsRedirection to allow access for the Mobile application
+// app.UseHttpsRedirection();
+
+// CORS must come BEFORE authentication so the browser's preflight (OPTIONS)
+// request from the admin UI is answered with the right headers.
+app.UseCors("AdminUI");
+
+// These two MUST appear in this exact order, Authentication first, then Authorization. Otherwise, you will get 401 Unauthorized errors.
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<TransitHub>("/transithub");
+app.MapHub<TransitHub>("/transithub"); // <-- Maps the WebSocket route endpoint
 
 app.Run();
