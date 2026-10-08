@@ -22,18 +22,20 @@ namespace UrbanLink_CRUD.Controllers.Admin
         [HttpGet("active")]
         public async Task<ActionResult<IEnumerable<object>>> GetActiveShifts()
         {
-            var shifts = await _context.Shifts
-                .Include(s => s.Driver)
-                .Include(s => s.Vehicle)
-                .Where(s => s.Status == "Active")
+            var shifts = await _context.ConductorShifts
+                .Include(s => s.Conductor)
+                .Include(s => s.Bus)
+                .Include(s => s.Route)
+                .Where(s => s.ShiftEndTime == null) // In the new model, a null EndTime means "Active"
                 .Select(s => new
                 {
-                    s.Id,
-                    DriverName = s.Driver != null ? s.Driver.Name : "Unknown",
-                    VehicleRegistration = s.Vehicle != null ? s.Vehicle.RegistrationNumber : "Unassigned",
-                    Route = s.RouteSegmentId.HasValue ? $"Segment #{s.RouteSegmentId.Value}" : "Not set",
-                    s.StartTime,
-                    s.Status
+                    Id = s.Id,
+                    // Map to the frontend's expected properties using the new relationships
+                    DriverName = s.Conductor != null ? s.Conductor.Name : "Unknown",
+                    VehicleRegistration = s.Bus != null ? s.Bus.LicensePlate : "Unassigned",
+                    Route = s.Route != null ? s.Route.RouteName : "Not set",
+                    StartTime = s.ShiftStartTime,
+                    Status = "Active"
                 })
                 .ToListAsync();
 
@@ -45,14 +47,15 @@ namespace UrbanLink_CRUD.Controllers.Admin
         [HttpPost("{id}/force-close")]
         public async Task<IActionResult> ForceCloseShift(int id)
         {
-            var shift = await _context.Shifts.FindAsync(id);
+            var shift = await _context.ConductorShifts.FindAsync(id);
             if (shift == null) return NotFound(new { message = $"Shift with ID {id} not found." });
 
-            if (shift.Status != "Active")
+            // In the new model, if EndTime has a value, the shift is already closed
+            if (shift.ShiftEndTime != null)
                 return BadRequest(new { message = "Only an active shift can be force-closed." });
 
-            shift.Status = "ForceClosed";
-            shift.EndTime = DateTime.UtcNow;
+            // Force close it by setting the end time
+            shift.ShiftEndTime = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return Ok(new { message = $"Shift {id} was force-closed.", shift });

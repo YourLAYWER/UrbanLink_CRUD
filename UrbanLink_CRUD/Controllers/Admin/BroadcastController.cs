@@ -29,11 +29,16 @@ namespace UrbanLink_CRUD.Controllers.Admin
 
         // POST: api/admin/broadcast
         // Sends a system alert notification to all registered users
+        // POST: api/admin/broadcast
+        // Sends a system alert notification to all registered users
         [HttpPost]
         public async Task<IActionResult> SendBroadcast(BroadcastDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Message))
                 return BadRequest(new { message = "Broadcast message cannot be empty." });
+
+            // Automatically append the current time to the message string
+            string stampedMessage = $"{dto.Message.Trim()} (Sent: {DateTime.Now:dd MMM, hh:mm tt})";
 
             var targetUserIds = await _context.Users.Select(u => u.Id).ToListAsync();
 
@@ -43,14 +48,39 @@ namespace UrbanLink_CRUD.Controllers.Admin
             var notifications = targetUserIds.Select(userId => new Notification
             {
                 Type = "broadcast_alert",
-                Message = dto.Message,
+                Message = stampedMessage, // Save the time-stamped version
                 UserId = userId
             }).ToList();
 
             _context.Notifications.AddRange(notifications);
             await _context.SaveChangesAsync();
-
+            
             return Ok(new { message = "Broadcast sent.", recipientCount = notifications.Count });
+        }
+
+        // GET: api/admin/broadcast/history
+        [HttpGet("history")]
+        public async Task<IActionResult> GetBroadcastHistory()
+        {
+            // 1. Fetch the records from the database first to avoid SQL translation errors
+            var allBroadcasts = await _context.Notifications
+                .Where(n => n.Type == "broadcast_alert")
+                .OrderByDescending(n => n.Id)
+                .ToListAsync();
+
+            // 2. Safely group them in memory
+            var history = allBroadcasts
+                .GroupBy(n => n.Message)
+                .Select(g => new
+                {
+                    Id = g.First().Id, // Use the ID of the first one in the group
+                    Message = g.Key,
+                    RecipientCount = g.Count()
+                })
+                .Take(10) // Keep the UI clean by only showing the last 10
+                .ToList();
+
+            return Ok(history);
         }
     }
 }

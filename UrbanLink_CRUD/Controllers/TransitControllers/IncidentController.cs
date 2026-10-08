@@ -100,5 +100,66 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
             return Ok(new { hasDelay = false });
         }
+
+        // GET: api/admin/incident
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<object>>> GetIncidents()
+        {
+            var incidents = await _context.IncidentReports
+                .Include(i => i.ConductorShift)
+                .ThenInclude(cs => cs.Conductor)
+                .OrderByDescending(i => i.ReportedAt)
+                .Select(i => new
+                {
+                    i.Id,
+                    ReportedByName = i.ConductorShift != null && i.ConductorShift.Conductor != null
+                                     ? i.ConductorShift.Conductor.Name
+                                     : "Unknown",
+                    i.ConductorShiftId,
+                    i.ReportedAt,
+                    i.IsEmergency,
+                    Category = i.Category.ToString(),
+                    i.Description,
+                    Status = i.Status.ToString(),
+                    i.Latitude,
+                    i.Longitude,
+                    i.ResolvedAt
+                })
+                .ToListAsync();
+
+            return Ok(incidents);
+        }
+
+        public class UpdateIncidentDto
+        {
+            public string Status { get; set; } = string.Empty; // "Open", "Investigating", "Resolved"
+        }
+
+        // PUT: api/admin/incident/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateIncident(int id, UpdateIncidentDto dto)
+        {
+            var incident = await _context.IncidentReports.FindAsync(id);
+            if (incident == null) return NotFound(new { message = $"Incident with ID {id} not found." });
+
+            var validStatuses = new[] { "Open", "Investigating", "Resolved" };
+            if (!validStatuses.Contains(dto.Status))
+                return BadRequest(new { message = $"Status must be one of: {string.Join(", ", validStatuses)}" });
+
+            if (Enum.TryParse(typeof(IncidentStatus), dto.Status, out var parsedStatus))
+            {
+                incident.Status = (IncidentStatus)parsedStatus;
+            }
+
+            // Automatically set ResolvedAt timestamp when an incident is closed
+            if (dto.Status == "Resolved" && incident.ResolvedAt == null)
+            {
+                incident.ResolvedAt = DateTime.UtcNow; // Or DateTime.Now depending on your timezone logic
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(incident);
+        }
+
     }
 }
