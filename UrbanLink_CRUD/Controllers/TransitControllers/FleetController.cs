@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using UrbanLink_CRUD.Models.Data;
+using UrbanLink_CRUD.Models.Entities;
 using UrbanLink_CRUD.Models.Enums;
 
 namespace UrbanLink_CRUD.Controllers.TransitControllers
@@ -38,8 +39,60 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
         //    return Ok(new { data = availableBuses });
         //}
+        [HttpGet]
+        public async Task<IActionResult> GetFleet()
+        {
+            // Fetches all rows (Active and InMaintenance) without any Where clause
+            var buses = await _context.Buses.ToListAsync();
+            return Ok(new { data = buses });
+        }
+        [HttpGet("allbusesavailable")]
+        [Authorize(Roles = "Conductor, Driver, Admin")]
+        public async Task<IActionResult> GetAvailabl()
+        {
+            var userRole = User.FindFirstValue(ClaimTypes.Role) ?? "Conductor";
 
-        [HttpGet("buses/available")]
+            var activeShifts = await _context.ConductorShifts
+                .Where(cs => cs.ShiftEndTime == null)
+                .Include(cs => cs.Conductor)
+                .ToListAsync();
+
+            var allBuses = await _context.Buses.ToListAsync();
+
+            var availableBuses = new List<object>();
+
+            foreach (var bus in allBuses)
+            {
+                var busShifts = activeShifts.Where(cs => cs.BusId == bus.Id).ToList();
+
+                bool hasDriver = busShifts.Any(cs => cs.Conductor?.Role == Role.Driver);
+                bool hasConductor = busShifts.Any(cs => cs.Conductor?.Role == Role.Conductor);
+
+                bool canSelect = true;
+
+                if ("Driver".Equals(userRole, StringComparison.OrdinalIgnoreCase) && hasDriver)
+                {
+                    canSelect = false;
+                }
+                else if ("Conductor".Equals(userRole, StringComparison.OrdinalIgnoreCase) && hasConductor)
+                {
+                    canSelect = false;
+                }
+
+                availableBuses.Add(new
+                {
+                    id = bus.Id,
+                    fleetNumber = bus.FleetNumber,
+                    status = bus.Status.ToString(), // Will output "Active" or "InMaintenance"
+                    canSelect = canSelect,
+                    label = $"{bus.FleetNumber} ({bus.LicensePlate}) - Status: {bus.Status} [Driver: {(hasDriver ? "Filled" : "Open")} | Conductor: {(hasConductor ? "Filled" : "Open")}]"
+                });
+            }
+
+            return Ok(new { data = availableBuses });
+        }
+
+        /*[HttpGet("buses/available")]
         [Authorize(Roles = "Conductor, Driver, Admin")]
         public async Task<IActionResult> GetAvailableBuses()
         {
@@ -90,6 +143,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             }
 
             return Ok(new { data = availableBuses });
-        }
+        }*/
     }
 }
