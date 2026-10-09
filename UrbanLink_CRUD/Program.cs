@@ -88,10 +88,11 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer"
     });
 
-    c.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecuritySchemeReference("Bearer"),
+            // Pass the document context to the reference
+            new OpenApiSecuritySchemeReference("Bearer", document),
             new List<string>()
         }
     });
