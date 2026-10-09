@@ -154,7 +154,6 @@ using (var scope = app.Services.CreateScope())
         DbInitializer.SeedBuses(context);
         DbInitializer.SeedTransitProviders(context);
         DbInitializer.SeedTransitSystem(context);
-        DbInitializer.SeedDemoOperations(context);
 
         var routingService = services.GetRequiredService<ITransitRoutingService>();
 

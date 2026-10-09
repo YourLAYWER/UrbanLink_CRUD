@@ -200,6 +200,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 .OrderBy(x => x.rs.StopSequence)
                 .Select(x => new
                 {
+                    StopId = x.td.StopId,
                     Name = x.td.Stop.Name,
                     SequenceNumber = x.rs.StopSequence,
                     PassengersDroppingOff = x.td.PassengersDroppingOff
@@ -457,7 +458,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 startStop = startStopName,
                 endStop = endStopName,
                 routeDisplay = $"{startStopName} → {endStopName}",
-                baseFare = shift.Route?.BaseFare ?? 0.00m
+                baseFare = shift.Route?.BaseFare ?? 0.00m,
+                encodedPolyline = shift.Route?.RouteMapPath ?? ""
             });
         }
 
