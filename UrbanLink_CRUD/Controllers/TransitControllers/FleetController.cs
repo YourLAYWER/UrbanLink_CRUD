@@ -92,7 +92,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             return Ok(new { data = availableBuses });
         }
 
-        /*[HttpGet("buses/available")]
+        [HttpGet("buses/available")]
         [Authorize(Roles = "Conductor, Driver, Admin")]
         public async Task<IActionResult> GetAvailableBuses()
         {
@@ -143,6 +143,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             }
 
             return Ok(new { data = availableBuses });
-        }*/
+        }
     }
 }
