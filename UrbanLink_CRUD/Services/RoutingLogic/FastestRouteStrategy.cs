@@ -1,16 +1,18 @@
 ﻿using UrbanLink_CRUD.Models.Entities.Transit;
+using UrbanLink_CRUD.Models.Enums;
 
 namespace UrbanLink_CRUD.Services.RoutingLogic
 {
     public class FastestRouteStrategy : IRoutingStrategy
     {
-        // Time needed to walk/change between buses. A transfer rider cannot board
+        // Time needed to walk/change between vehicles. A transfer rider cannot board
         // anything departing sooner than this, so it is applied BEFORE computing
         // the wait (not added on top of it).
         private const int TransferBufferMinutes = 10;
         private const int NotBoarded = -1;
 
-        private readonly record struct StateKey(int Stop, int Route);
+        // Line = GraphEdge.LineKey (route + direction).
+        private readonly record struct StateKey(int Stop, int Line);
 
         // One dictionary instead of bestTimes + cameFrom: half the hashing.
         private readonly record struct Node(int Time, StateKey Prev, GraphEdge? Edge);
@@ -42,7 +44,7 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
                 if (!graph.TryGetValue(cur.Stop, out var edges)) continue;
 
                 // Per-state invariants: computed once, not once per edge.
-                bool boarding = cur.Route == NotBoarded;
+                bool boarding = cur.Line == NotBoarded;
                 bool atHub = transferHubs.Contains(cur.Stop);
 
                 int minuteOfDay = 0;
@@ -62,7 +64,8 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
 
                 foreach (var edge in edges)
                 {
-                    bool changing = !boarding && edge.RouteId != cur.Route;
+                    // Changing line includes reversing direction on the same route.
+                    bool changing = !boarding && edge.LineKey != cur.Line;
                     if (changing && !atHub) continue;
 
                     int wait = 0;
@@ -80,7 +83,7 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
                              + wait
                              + edge.TravelTimeMinutes;
 
-                    var nextKey = new StateKey(edge.DestinationStopId, edge.RouteId);
+                    var nextKey = new StateKey(edge.DestinationStopId, edge.LineKey);
 
                     if (!nodes.TryGetValue(nextKey, out var existing) || next < existing.Time)
                     {
@@ -113,12 +116,14 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
             if (pathEdges.Count == 0) return new RoutingResult(totalTime, legs);
 
             var current = NewLeg(pathEdges[0]);
+            int currentLine = pathEdges[0].LineKey;
 
             for (int i = 1; i < pathEdges.Count; i++)
             {
                 var edge = pathEdges[i];
 
-                if (edge.RouteId == current.RouteId)
+                // Compare lines, not route ids, so an out-and-back isn't merged into one leg.
+                if (edge.LineKey == currentLine)
                 {
                     current.EndStopId = edge.DestinationStopId;
                     current.LegDurationMinutes += edge.TravelTimeMinutes;
@@ -127,6 +132,7 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
                 {
                     legs.Add(current);
                     current = NewLeg(edge);
+                    currentLine = edge.LineKey;
                 }
             }
 
@@ -137,11 +143,13 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
         private static JourneyLeg NewLeg(GraphEdge edge) => new()
         {
             RouteId = edge.RouteId,
+            Direction = edge.Direction,
             StartStopId = edge.OriginStopId,
             EndStopId = edge.DestinationStopId,
             LegDurationMinutes = edge.TravelTimeMinutes,
             LegFare = edge.RouteBaseFare
         };
+
 
     }
 }

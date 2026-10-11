@@ -1,4 +1,5 @@
 ﻿using UrbanLink_CRUD.Models.Entities.Transit;
+using UrbanLink_CRUD.Models.Enums;
 
 namespace UrbanLink_CRUD.Services.RoutingLogic
 {
@@ -25,18 +26,21 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
         }
 
         /// <summary>
-        /// Resolves a route's schedules into one weekday and one weekend schedule.
-        /// Call once per route when building the graph, not once per edge.
-        /// "Daily" is treated as both; anything else (e.g. "Holiday") is ignored,
-        /// same as before. If a route has several rows for the same day type,
-        /// the first one wins (same as the old FirstOrDefault).
+        /// Resolves a route's schedules for ONE direction into a weekday and a weekend schedule.
+        /// Call once per route and direction when building the graph, not once per edge.
+        /// "Daily" is treated as both; anything else (e.g. "Holiday") is ignored.
+        /// If several rows match the same day type, the first one wins.
         /// </summary>
-        public static (ScheduleInfo? Weekday, ScheduleInfo? Weekend) Resolve(IEnumerable<RouteSchedule> schedules)
+        public static (ScheduleInfo? Weekday, ScheduleInfo? Weekend) Resolve(
+            IEnumerable<RouteSchedule> schedules,
+            RouteDirections direction = RouteDirections.Outbound)
         {
             ScheduleInfo? weekday = null, weekend = null;
 
             foreach (var s in schedules)
             {
+                if (s.Direction != direction) continue;
+
                 var days = s.DaysOfOperation.Trim();
                 bool daily = days.Equals("Daily", StringComparison.OrdinalIgnoreCase);
 
@@ -70,5 +74,6 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
             return minuteOfDay + wait > last ? NoService : wait;
         }
     }
+
 
 }

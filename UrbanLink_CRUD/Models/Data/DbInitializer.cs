@@ -1,5 +1,4 @@
-﻿using BCrypt.Net;
-using UrbanLink_CRUD.Models.Entities;
+﻿using UrbanLink_CRUD.Models.Entities;
 using UrbanLink_CRUD.Models.Entities.Transit;
 using UrbanLink_CRUD.Models.Enums;
 
@@ -13,7 +12,7 @@ namespace UrbanLink_CRUD.Models.Data
             if (!context.Users.Any(u => u.Email == "admin@urbanlink.co.za"))
             {
                 string adminPasswordHash = BCrypt.Net.BCrypt.HashPassword("AdminSecure@2026!", 11);
-                
+
 
                 var adminUser = new User
                 {
@@ -24,13 +23,13 @@ namespace UrbanLink_CRUD.Models.Data
                     CreatedAt = DateTime.UtcNow
                 };
 
-                
+
 
                 context.Users.Add(adminUser);
                 context.SaveChanges();
             }
 
-            if(!context.Users.Any(u => u.Email == "conductor@urbanlink.co.za"))
+            if (!context.Users.Any(u => u.Email == "conductor@urbanlink.co.za"))
             {
                 string conductorPasswordHash = BCrypt.Net.BCrypt.HashPassword("ConductorSecure@2026!", 11);
 
@@ -277,6 +276,7 @@ namespace UrbanLink_CRUD.Models.Data
             new TransitRoute
             {
                 RouteName = "Route 3: Sydenhem to Gqeberha CBD",
+                IsBidirectional = true,
                 TransportType = TransitType.Bus,
                 BaseFare = 8.00m,
                 ProviderId = provider2.Id, // Links directly to Libhongolethu
@@ -292,6 +292,7 @@ namespace UrbanLink_CRUD.Models.Data
                 {
                     new RouteSchedule
                     {
+                        Direction = RouteDirections.Inbound,
                         DaysOfOperation = "Weekdays",
                         FirstDepartureTime = new TimeSpan(5, 30, 0),
                         LastDepartureTime = new TimeSpan(19, 0, 0),
@@ -299,6 +300,23 @@ namespace UrbanLink_CRUD.Models.Data
                     },
                     new RouteSchedule
                     {
+                        Direction = RouteDirections.Inbound,
+                        DaysOfOperation = "Weekends",
+                        FirstDepartureTime = new TimeSpan(6, 0, 0),
+                        LastDepartureTime = new TimeSpan(17, 0, 0),
+                        FrequencyMinutes = 30
+                    },
+                    new RouteSchedule
+                    {
+                        Direction = RouteDirections.Outbound,
+                        DaysOfOperation = "Weekdays",
+                        FirstDepartureTime = new TimeSpan(5, 30, 0),
+                        LastDepartureTime = new TimeSpan(19, 0, 0),
+                        FrequencyMinutes = 30
+                    },
+                    new RouteSchedule
+                    {
+                        Direction = RouteDirections.Outbound,
                         DaysOfOperation = "Weekends",
                         FirstDepartureTime = new TimeSpan(6, 0, 0),
                         LastDepartureTime = new TimeSpan(17, 0, 0),
@@ -310,6 +328,7 @@ namespace UrbanLink_CRUD.Models.Data
             {
                 RouteName = "Route 4: Uitanhage station to Gqeberha Train Station",
                 TransportType = TransitType.Train,
+                IsBidirectional = true,
                 BaseFare = 8.00m,
                 ProviderId = provider3.Id, // Links directly to PRASA
                 RouteMapPath = "v|gnEuyk{Cc@f@eAnA{HdJcAjA]`@W^Y`@QVYb@W`@Wb@[l@[h@_AbByB~Dq@jAsAbCqA~BgB`Dm@fAgAnB[f@Wb@_@f@" +
@@ -331,6 +350,7 @@ namespace UrbanLink_CRUD.Models.Data
                 {
                     new RouteSchedule
                     {
+                        Direction = RouteDirections.Inbound,
                         DaysOfOperation = "Weekdays",
                         FirstDepartureTime = new TimeSpan(5, 30, 0),
                         LastDepartureTime = new TimeSpan(19, 0, 0),
@@ -338,6 +358,23 @@ namespace UrbanLink_CRUD.Models.Data
                     },
                     new RouteSchedule
                     {
+                        Direction = RouteDirections.Inbound,
+                        DaysOfOperation = "Weekends",
+                        FirstDepartureTime = new TimeSpan(6, 0, 0),
+                        LastDepartureTime = new TimeSpan(17, 0, 0),
+                        FrequencyMinutes = 30
+                    },
+                     new RouteSchedule
+                    {
+                        Direction = RouteDirections.Outbound,
+                        DaysOfOperation = "Weekdays",
+                        FirstDepartureTime = new TimeSpan(5, 30, 0),
+                        LastDepartureTime = new TimeSpan(19, 0, 0),
+                        FrequencyMinutes = 30
+                    },
+                    new RouteSchedule
+                    {
+                        Direction = RouteDirections.Outbound,
                         DaysOfOperation = "Weekends",
                         FirstDepartureTime = new TimeSpan(6, 0, 0),
                         LastDepartureTime = new TimeSpan(17, 0, 0),

@@ -6,6 +6,7 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
     {
         public int Id { get; set; }
         public string RouteName { get; set; } = string.Empty; // e.g., "Route 10"
+        public bool IsBidirectional { get; set; } = false; // Indicates if the route operates in both directions, false means one-way
         public TransitType TransportType { get; set; } // "Bus", "Train"
         public decimal BaseFare { get; set; }
         public int ProviderId { get; set; }
