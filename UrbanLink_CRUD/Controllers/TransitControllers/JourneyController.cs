@@ -10,7 +10,7 @@ using UrbanLink_CRUD.Models.Dtos.TransitDtos;
 using UrbanLink_CRUD.Models.Entities.Transit;
 using UrbanLink_CRUD.Models.Enums;
 using UrbanLink_CRUD.Services.RoutingLogic;
-using static UrbanLink_CRUD.Services.RoutingLogic.RoutingContex;
+using RoutingContext = UrbanLink_CRUD.Services.RoutingLogic.RoutingContext;
 
 namespace UrbanLink_CRUD.Controllers.TransitControllers
 {

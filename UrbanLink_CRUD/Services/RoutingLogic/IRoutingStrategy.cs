@@ -1,6 +1,4 @@
-﻿using static UrbanLink_CRUD.Services.RoutingLogic.RoutingContex;
-
-namespace UrbanLink_CRUD.Services.RoutingLogic
+﻿namespace UrbanLink_CRUD.Services.RoutingLogic
 {
     public interface IRoutingStrategy
     {

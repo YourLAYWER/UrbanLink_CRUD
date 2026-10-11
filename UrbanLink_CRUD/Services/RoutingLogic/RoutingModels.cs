@@ -2,11 +2,23 @@
 
 namespace UrbanLink_CRUD.Services.RoutingLogic
 {
-    public record GraphEdge(int OriginStopId, int DestinationStopId, int RouteId, int TravelTimeMinutes,
-        decimal RouteBaseFare, int OffsetFromRouteStart, List<RouteSchedule> Schedules);
+    // Schedules are precomputed per day type when the graph is built,
+    // so the search never scans a List<RouteSchedule> or compares strings.
+    public sealed record GraphEdge(
+        int OriginStopId,
+        int DestinationStopId,
+        int RouteId,
+        int TravelTimeMinutes,
+        decimal RouteBaseFare,
+        int OffsetFromRouteStart,
+        ScheduleInfo? WeekdaySchedule,
+        ScheduleInfo? WeekendSchedule)
+    {
+        public ScheduleInfo? ScheduleFor(DayType day) =>
+            day == DayType.Weekend ? WeekendSchedule : WeekdaySchedule;
+    }
 
-    public record SearchState(int StopId, int CurrentRouteId, int TotalTimeMinutes);
-
+    // Kept as-is so the controller and journey factory keep working.
     public class JourneyLeg
     {
         public int RouteId { get; set; }
@@ -17,8 +29,4 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
     }
 
     public record RoutingResult(int TotalTimeMinutes, List<JourneyLeg> Legs);
-    public class RoutingModels
-    {
-        
-    }
 }

@@ -1,178 +1,147 @@
-﻿using static UrbanLink_CRUD.Services.RoutingLogic.RoutingContex;
+﻿using UrbanLink_CRUD.Models.Entities.Transit;
 
 namespace UrbanLink_CRUD.Services.RoutingLogic
 {
     public class FastestRouteStrategy : IRoutingStrategy
     {
-        private const int TransferPenaltyMinutes = 10;
+        // Time needed to walk/change between buses. A transfer rider cannot board
+        // anything departing sooner than this, so it is applied BEFORE computing
+        // the wait (not added on top of it).
+        private const int TransferBufferMinutes = 10;
+        private const int NotBoarded = -1;
+
+        private readonly record struct StateKey(int Stop, int Route);
+
+        // One dictionary instead of bestTimes + cameFrom: half the hashing.
+        private readonly record struct Node(int Time, StateKey Prev, GraphEdge? Edge);
 
         public RoutingResult ComputeRoute(
             RoutingContext context,
             IReadOnlyDictionary<int, List<GraphEdge>> graph,
             IReadOnlySet<int> transferHubs)
         {
-            var bestTimes = new Dictionary<(int stop, int route), int>();
-            var pq = new PriorityQueue<SearchState, int>();
-            var cameFrom = new Dictionary<(int stop, int route), ((int stop, int route) prevState, GraphEdge edge)>();
+            var nodes = new Dictionary<StateKey, Node>();
+            var pq = new PriorityQueue<StateKey, int>();
 
-            pq.Enqueue(new SearchState(context.StartStopId, -1, 0), 0);
-            bestTimes[(context.StartStopId, -1)] = 0;
+            var start = new StateKey(context.StartStopId, NotBoarded);
+            nodes[start] = new Node(0, default, null);
+            pq.Enqueue(start, 0);
 
-            (int stop, int route)? finalState = null;
+            StateKey? finalState = null;
 
-            while (pq.Count > 0)
+            while (pq.TryDequeue(out var cur, out int time))
             {
-                pq.TryDequeue(out var currentState, out int currentTime);
+                if (time > nodes[cur].Time) continue;          // stale queue entry
 
-                if (currentState.StopId == context.TargetStopId)
+                if (cur.Stop == context.TargetStopId)
                 {
-                    finalState = (currentState.StopId, currentState.CurrentRouteId);
+                    finalState = cur;
                     break;
                 }
 
-                if (currentTime > bestTimes.GetValueOrDefault((currentState.StopId, currentState.CurrentRouteId), int.MaxValue))
-                    continue;
+                if (!graph.TryGetValue(cur.Stop, out var edges)) continue;
 
-                if (graph.TryGetValue(currentState.StopId, out var outboundEdges))
+                // Per-state invariants: computed once, not once per edge.
+                bool boarding = cur.Route == NotBoarded;
+                bool atHub = transferHubs.Contains(cur.Stop);
+
+                int minuteOfDay = 0;
+                DayType day = DayType.Weekday;
+
+                if (boarding || atHub)
                 {
-                    foreach (var edge in outboundEdges)
+                    int buffer = boarding ? 0 : TransferBufferMinutes;
+                    var readyToBoard = context.UserDepartureTime.AddMinutes(time + buffer);
+
+                    // Ceiling so 08:00:40 can't catch the 08:00 bus that already left.
+                    minuteOfDay = (int)Math.Ceiling(readyToBoard.TimeOfDay.TotalMinutes);
+                    day = readyToBoard.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+                        ? DayType.Weekend
+                        : DayType.Weekday;
+                }
+
+                foreach (var edge in edges)
+                {
+                    bool changing = !boarding && edge.RouteId != cur.Route;
+                    if (changing && !atHub) continue;
+
+                    int wait = 0;
+                    if (boarding || changing)
                     {
-                        bool isChangingBuses = currentState.CurrentRouteId != -1 &&
-                                               currentState.CurrentRouteId != edge.RouteId;
-                        bool isFirstBoarding = currentState.CurrentRouteId == -1;
+                        var schedule = edge.ScheduleFor(day);
+                        if (schedule is null) continue;
 
-                        if (isChangingBuses && !transferHubs.Contains(currentState.StopId))
-                        {
-                            continue;
-                        }
+                        wait = schedule.Value.WaitFrom(minuteOfDay, edge.OffsetFromRouteStart);
+                        if (wait == ScheduleInfo.NoService) continue;
+                    }
 
-                        int waitTime = 0;
+                    int next = time
+                             + (changing ? TransferBufferMinutes : 0)
+                             + wait
+                             + edge.TravelTimeMinutes;
 
-                        if (isFirstBoarding || isChangingBuses)
-                        {
-                            DateTime userTimeAtThisNode = context.UserDepartureTime.AddMinutes(currentTime);
-                            waitTime = CalculateWaitTime(userTimeAtThisNode, edge);
+                    var nextKey = new StateKey(edge.DestinationStopId, edge.RouteId);
 
-                            if (waitTime >= 9999)
-                            {
-                                continue;
-                            }
-                        }
-
-                        int costToNextStop = edge.TravelTimeMinutes + waitTime + (isChangingBuses ? TransferPenaltyMinutes : 0);
-                        int newTotalTime = currentTime + costToNextStop;
-
-                        var nextStateKey = (edge.DestinationStopId, edge.RouteId);
-                        var currentStateKey = (currentState.StopId, currentState.CurrentRouteId);
-
-                        if (newTotalTime < bestTimes.GetValueOrDefault(nextStateKey, int.MaxValue))
-                        {
-                            bestTimes[nextStateKey] = newTotalTime;
-                            cameFrom[nextStateKey] = (currentStateKey, edge);
-                            pq.Enqueue(new SearchState(edge.DestinationStopId, edge.RouteId, newTotalTime), newTotalTime);
-                        }
+                    if (!nodes.TryGetValue(nextKey, out var existing) || next < existing.Time)
+                    {
+                        nodes[nextKey] = new Node(next, cur, edge);
+                        pq.Enqueue(nextKey, next);
                     }
                 }
             }
 
-            if (finalState == null)
-            {
+            if (finalState is null)
                 return new RoutingResult(-1, new List<JourneyLeg>());
-            }
 
-            return ReconstructPath(cameFrom, finalState.Value, bestTimes[finalState.Value]);
+            return ReconstructPath(nodes, finalState.Value);
         }
 
-        private int CalculateWaitTime(DateTime userCurrentTime, GraphEdge edge)
+        private static RoutingResult ReconstructPath(Dictionary<StateKey, Node> nodes, StateKey target)
         {
-            bool isWeekend = userCurrentTime.DayOfWeek == DayOfWeek.Saturday ||
-                             userCurrentTime.DayOfWeek == DayOfWeek.Sunday;
-            string expectedDayType = isWeekend ? "Weekends" : "Weekdays";
+            var node = nodes[target];
+            int totalTime = node.Time;
 
-            var activeSchedule = edge.Schedules.FirstOrDefault(s => s.DaysOfOperation == expectedDayType);
-
-            if (activeSchedule == null)
-            {
-                return 9999;
-            }
-
-            TimeSpan firstArrivalAtStop = activeSchedule.FirstDepartureTime.Add(TimeSpan.FromMinutes(edge.OffsetFromRouteStart));
-            TimeSpan lastArrivalAtStop = activeSchedule.LastDepartureTime.Add(TimeSpan.FromMinutes(edge.OffsetFromRouteStart));
-            TimeSpan userTimeOfDay = userCurrentTime.TimeOfDay;
-
-            if (userTimeOfDay > lastArrivalAtStop)
-            {
-                return 9999;
-            }
-
-            if (userTimeOfDay <= firstArrivalAtStop)
-            {
-                return (int)(firstArrivalAtStop - userTimeOfDay).TotalMinutes;
-            }
-
-            int minutesSinceFirstBus = (int)(userTimeOfDay - firstArrivalAtStop).TotalMinutes;
-            int minutesIntoCurrentCycle = minutesSinceFirstBus % activeSchedule.FrequencyMinutes;
-
-            if (minutesIntoCurrentCycle == 0) return 0;
-
-            return activeSchedule.FrequencyMinutes - minutesIntoCurrentCycle;
-        }
-
-        private RoutingResult ReconstructPath(
-            Dictionary<(int stop, int route), ((int stop, int route) prevState, GraphEdge edge)> cameFrom,
-            (int stop, int route) targetState,
-            int totalTime)
-        {
             var pathEdges = new List<GraphEdge>();
-            var currentState = targetState;
-
-            while (cameFrom.ContainsKey(currentState))
+            while (node.Edge is not null)
             {
-                var transitData = cameFrom[currentState];
-                pathEdges.Add(transitData.edge);
-                currentState = transitData.prevState;
+                pathEdges.Add(node.Edge);
+                node = nodes[node.Prev];
             }
-
             pathEdges.Reverse();
 
-            var journeyLegs = new List<JourneyLeg>();
-            if (pathEdges.Count == 0) return new RoutingResult(totalTime, journeyLegs);
+            var legs = new List<JourneyLeg>();
+            if (pathEdges.Count == 0) return new RoutingResult(totalTime, legs);
 
-            var currentLeg = new JourneyLeg
-            {
-                RouteId = pathEdges[0].RouteId,
-                StartStopId = pathEdges[0].OriginStopId,
-                EndStopId = pathEdges[0].DestinationStopId,
-                LegDurationMinutes = pathEdges[0].TravelTimeMinutes,
-                LegFare = pathEdges[0].RouteBaseFare
-            };
+            var current = NewLeg(pathEdges[0]);
 
             for (int i = 1; i < pathEdges.Count; i++)
             {
                 var edge = pathEdges[i];
 
-                if (edge.RouteId == currentLeg.RouteId)
+                if (edge.RouteId == current.RouteId)
                 {
-                    currentLeg.EndStopId = edge.DestinationStopId;
-                    currentLeg.LegDurationMinutes += edge.TravelTimeMinutes;
+                    current.EndStopId = edge.DestinationStopId;
+                    current.LegDurationMinutes += edge.TravelTimeMinutes;
                 }
                 else
                 {
-                    journeyLegs.Add(currentLeg);
-                    currentLeg = new JourneyLeg
-                    {
-                        RouteId = edge.RouteId,
-                        StartStopId = edge.OriginStopId,
-                        EndStopId = edge.DestinationStopId,
-                        LegDurationMinutes = edge.TravelTimeMinutes,
-                        LegFare = edge.RouteBaseFare
-                    };
+                    legs.Add(current);
+                    current = NewLeg(edge);
                 }
             }
 
-            journeyLegs.Add(currentLeg);
-
-            return new RoutingResult(totalTime, journeyLegs);
+            legs.Add(current);
+            return new RoutingResult(totalTime, legs);
         }
+
+        private static JourneyLeg NewLeg(GraphEdge edge) => new()
+        {
+            RouteId = edge.RouteId,
+            StartStopId = edge.OriginStopId,
+            EndStopId = edge.DestinationStopId,
+            LegDurationMinutes = edge.TravelTimeMinutes,
+            LegFare = edge.RouteBaseFare
+        };
+
     }
 }

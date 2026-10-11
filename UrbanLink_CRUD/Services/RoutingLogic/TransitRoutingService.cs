@@ -1,11 +1,14 @@
-﻿using static UrbanLink_CRUD.Services.RoutingLogic.RoutingContex;
-
-namespace UrbanLink_CRUD.Services.RoutingLogic
+﻿namespace UrbanLink_CRUD.Services.RoutingLogic
 {
     public class TransitRoutingService : ITransitRoutingService
     {
-        private Dictionary<int, List<GraphEdge>> _graph = new();
-        private HashSet<int> _transferHubs = new();
+        // Graph and hubs live in one immutable object and are swapped with a single
+        // reference write, so a request never sees a graph paired with the wrong hubs.
+        private sealed record Snapshot(
+            Dictionary<int, List<GraphEdge>> Graph,
+            HashSet<int> Hubs);
+
+        private volatile Snapshot _snapshot = new(new(), new());
         private readonly IRoutingStrategyFactory _strategyFactory;
 
         public TransitRoutingService(IRoutingStrategyFactory strategyFactory)
@@ -15,27 +18,31 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
 
         public void InitializeGraph(IEnumerable<GraphEdge> edges, IEnumerable<int> transferHubIds)
         {
-            var newGraph = new Dictionary<int, List<GraphEdge>>();
-            var newHubs = new HashSet<int>(transferHubIds);
+            var graph = new Dictionary<int, List<GraphEdge>>();
 
             foreach (var edge in edges)
             {
-                if (!newGraph.ContainsKey(edge.OriginStopId))
-                    newGraph[edge.OriginStopId] = new List<GraphEdge>();
+                if (!graph.TryGetValue(edge.OriginStopId, out var list))
+                    graph[edge.OriginStopId] = list = new List<GraphEdge>();
 
-                newGraph[edge.OriginStopId].Add(edge);
+                list.Add(edge);
             }
 
-            _graph = newGraph;
-            _transferHubs = newHubs;
+            _snapshot = new Snapshot(graph, new HashSet<int>(transferHubIds));
         }
 
-        public RoutingResult ComputeRoute(int startStopId, int targetStopId, DateTime userDepartureTime, string preference = "fastest")
+        public RoutingResult ComputeRoute(
+            int startStopId,
+            int targetStopId,
+            DateTime userDepartureTime,
+            string preference = "fastest")
         {
+            var snap = _snapshot;   // read once; use only this local for the whole request
             var strategy = _strategyFactory.GetStrategy(preference);
             var context = new RoutingContext(startStopId, targetStopId, userDepartureTime);
 
-            return strategy.ComputeRoute(context, _graph, _transferHubs);
+            return strategy.ComputeRoute(context, snap.Graph, snap.Hubs);
         }
+
     }
 }

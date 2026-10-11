@@ -157,46 +157,10 @@ using (var scope = app.Services.CreateScope())
         DbInitializer.SeedTransitSystem(context);
 
         var routingService = services.GetRequiredService<ITransitRoutingService>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
 
-        var dbSegments = context.RouteSegments
-            .Include(s => s.Route)
-                .ThenInclude(r => r.Schedules)
-            .ToList();
-
-        var graphEdges = new List<GraphEdge>();
-
-        foreach (var routeGroup in dbSegments.GroupBy(s => s.RouteId))
-        {
-            var routeSegments = routeGroup.ToList();
-
-            var currentSegment = routeSegments.FirstOrDefault(s =>
-                !routeSegments.Any(other => other.DestinationStopId == s.OriginStopId));
-
-            int currentOffset = 0;
-
-            while (currentSegment != null)
-            {
-                graphEdges.Add(new GraphEdge(
-                    currentSegment.OriginStopId,
-                    currentSegment.DestinationStopId,
-                    currentSegment.RouteId,
-                    currentSegment.TravelTimeMinutes,
-                    currentSegment.Route.BaseFare,
-                    currentOffset,
-                    currentSegment.Route.Schedules.ToList()
-                ));
-
-                currentOffset += currentSegment.TravelTimeMinutes;
-                currentSegment = routeSegments.FirstOrDefault(s => s.OriginStopId == currentSegment.DestinationStopId);
-            }
-        }
-
-        var hubIds = context.Stops
-            .Where(s => s.IsTransferHub)
-            .Select(s => s.Id)
-            .ToList();
-
-        routingService.InitializeGraph(graphEdges, hubIds);
+        var (edges, hubIds) = TransitGraphLoader.Load(context, logger);
+        routingService.InitializeGraph(edges, hubIds);
     }
     catch (Exception ex)
     {
