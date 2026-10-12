@@ -165,17 +165,20 @@ namespace UrbanLink_CRUD.Models.Data
                 new Stop { Name = "Goven Mbeki Stop", Latitude = -33.957693, Longitude = 25.618814, IsTransferHub = false, IsActive = true },
                 new Stop { Name = "Harbour Stop", Latitude = -33.963109, Longitude = 25.626052, IsTransferHub = false, IsActive = true },
                 new Stop { Name = "Tramway Stop", Latitude = -33.965053, Longitude = 25.626133, IsTransferHub = false, IsActive = true },//Start of Train Stops Route 4
-                new Stop {Name = "Uitenhage Train Station", Latitude =  -33.770963, Longitude = 25.409130, IsTransferHub = false, IsActive = true },
-                new Stop {Name = "Alexander Park Train Station", Latitude =  -33.781057, Longitude = 25.418472, IsTransferHub = false, IsActive = true },
-                new Stop {Name = "Despatch Train Station", Latitude =   -33.797757, Longitude = 25.469287, IsTransferHub = false, IsActive = true },
-                new Stop {Name = "Azalea Park Train Station", Latitude =  -33.815527, Longitude = 25.521027, IsTransferHub = false, IsActive = true },
-                new Stop {Name = "RedHouse Train Station", Latitude =  -33.837973, Longitude = 25.568188, IsTransferHub = false, IsActive = true },
-                new Stop {Name = "Swartkops Train Station", Latitude =  -33.867260, Longitude = 25.600640, IsTransferHub = false, IsActive = true },
-                new Stop {Name = "Deal Train Station", Latitude =   -33.899102, Longitude =  25.607817, IsTransferHub = false, IsActive = true },
-                new Stop {Name = "Sydenham train Station", Latitude =  -33.923639, Longitude = 25.604296, IsTransferHub = false, IsActive = true },
-                new Stop {Name = "Harbour train Station", Latitude =  -33.946922, Longitude = 25.610239, IsTransferHub = false, IsActive = true },
-                new Stop {Name = "Gqeberha Train Station", Latitude =   -33.960411, Longitude = 25.624245, IsTransferHub = false, IsActive = true }
-
+                new Stop { Name = "Uitenhage Train Station", Latitude =  -33.770963, Longitude = 25.409130, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Alexander Park Train Station", Latitude =  -33.781057, Longitude = 25.418472, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Despatch Train Station", Latitude =   -33.797757, Longitude = 25.469287, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Azalea Park Train Station", Latitude =  -33.815527, Longitude = 25.521027, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "RedHouse Train Station", Latitude =  -33.837973, Longitude = 25.568188, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Swartkops Train Station", Latitude =  -33.867260, Longitude = 25.600640, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Deal Train Station", Latitude =   -33.899102, Longitude =  25.607817, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Sydenham train Station", Latitude =  -33.923639, Longitude = 25.604296, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Harbour train Station", Latitude =  -33.946922, Longitude = 25.610239, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Gqeberha Train Station", Latitude =   -33.960411, Longitude = 25.624245, IsTransferHub = false, IsActive = true },//Start of Route 5 stops Libhongolethu
+                new Stop { Name = "Sidwell Stop", Latitude =  -33.918509, Longitude = 25.599481, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Sutton stop", Latitude =  -33.923082, Longitude = 25.595497 , IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Hoch stop", Latitude =  -33.926367, Longitude = 25.592519, IsTransferHub = false, IsActive = true },
+                new Stop { Name = "Nielson ext stop", Latitude =  -33.934139, Longitude = 25.585710, IsTransferHub = false, IsActive = true }
             };
 
             context.Stops.AddRange(stops);
@@ -381,6 +384,53 @@ namespace UrbanLink_CRUD.Models.Data
                         FrequencyMinutes = 30
                     }
                 }
+            },
+            new TransitRoute
+            {
+                RouteName = "Route 5: Kempston Rd to Greenacres",
+                TransportType = TransitType.Bus,
+                IsBidirectional = true,
+                BaseFare = 13.00m,
+                ProviderId = provider2.Id, // Links directly to Libhongolethu
+                RouteMapPath = "fc_nEqlg{C^\\rDtCzBnB~CnCZXpC`C|@v@`Av@\\XPNfClBLJx@r@f@`@NNtF`FnBtATNJFLHJHf@^d@^b@b@PLRPNJX" +
+                "TJJBDNNb@f@t@x@JHb@`@BB\\XZXvCfCTPtBbBhA`A`@\\zAhAXTlB`Br@n@`BvAbAz@VRxApApAdARR~@x@d@^\\Xp@j@|@t@vBhBjA`A|@" +
+                "r@jB`BZRl@h@TPrAnARPp@h@TNnB`BLJPPtA~Ad@x@d@|@N`@@BDJT~@TnAPt@BDVp@NVv@bA`Av@lAn@pDtBHF~EtCb@VdAbAzAxB`AdAf@" +
+                "b@n@`@r@XxLvCJBjCl@pAXPF|Bh@TDTFHa@^LFc@d@_DZF?F?N?HBd@H`@P`@XXLBjCd@",
+                Schedules = new List<RouteSchedule>
+                {
+                    new RouteSchedule
+                    {
+                        Direction = RouteDirections.Inbound,
+                        DaysOfOperation = "Weekdays",
+                        FirstDepartureTime = new TimeSpan(5, 30, 0),
+                        LastDepartureTime = new TimeSpan(19, 0, 0),
+                        FrequencyMinutes = 30
+                    },
+                    new RouteSchedule
+                    {
+                        Direction = RouteDirections.Inbound,
+                        DaysOfOperation = "Weekends",
+                        FirstDepartureTime = new TimeSpan(6, 0, 0),
+                        LastDepartureTime = new TimeSpan(17, 0, 0),
+                        FrequencyMinutes = 30
+                    },
+                     new RouteSchedule
+                    {
+                        Direction = RouteDirections.Outbound,
+                        DaysOfOperation = "Weekdays",
+                        FirstDepartureTime = new TimeSpan(5, 30, 0),
+                        LastDepartureTime = new TimeSpan(19, 0, 0),
+                        FrequencyMinutes = 30
+                    },
+                    new RouteSchedule
+                    {
+                        Direction = RouteDirections.Outbound,
+                        DaysOfOperation = "Weekends",
+                        FirstDepartureTime = new TimeSpan(6, 0, 0),
+                        LastDepartureTime = new TimeSpan(17, 0, 0),
+                        FrequencyMinutes = 30
+                    }
+                }
             }
             };
 
@@ -421,14 +471,18 @@ namespace UrbanLink_CRUD.Models.Data
                 new RouteSegment { OriginStopId = stops[24].Id, DestinationStopId = stops[25].Id, RouteId = routes[3].Id, TravelTimeMinutes = 3 },
                 new RouteSegment { OriginStopId = stops[25].Id, DestinationStopId = stops[26].Id, RouteId = routes[3].Id, TravelTimeMinutes = 2 },
                 new RouteSegment { OriginStopId = stops[26].Id, DestinationStopId = stops[27].Id, RouteId = routes[3].Id, TravelTimeMinutes = 2 },
-                new RouteSegment { OriginStopId = stops[27].Id, DestinationStopId = stops[28].Id, RouteId = routes[3].Id, TravelTimeMinutes = 2 }
-            };
+                new RouteSegment { OriginStopId = stops[27].Id, DestinationStopId = stops[28].Id, RouteId = routes[3].Id, TravelTimeMinutes = 2 },
 
+                // Route 5 segments (26-28) - Libhongolethu (4 stops = 3 segments)
+                new RouteSegment { OriginStopId = stops[29].Id, DestinationStopId = stops[30].Id, RouteId = routes[4].Id, TravelTimeMinutes = 5 },
+                new RouteSegment { OriginStopId = stops[30].Id, DestinationStopId = stops[31].Id, RouteId = routes[4].Id, TravelTimeMinutes = 5 },
+                new RouteSegment { OriginStopId = stops[31].Id, DestinationStopId = stops[32].Id, RouteId = routes[4].Id, TravelTimeMinutes = 5 }
+            };
             context.RouteSegments.AddRange(segments);
             context.SaveChanges();
 
             var routeStops = new RouteStop[]
-             {
+            {
                 // Route 1 stops (Segments 0-2)
                 new RouteStop { SegmentId = segments[0].Id, StopId = stops[0].Id, StopSequence = 1 },
                 new RouteStop { SegmentId = segments[0].Id, StopId = stops[1].Id, StopSequence = 2 },
@@ -465,8 +519,14 @@ namespace UrbanLink_CRUD.Models.Data
                 new RouteStop { SegmentId = segments[22].Id, StopId = stops[25].Id, StopSequence = 7 },
                 new RouteStop { SegmentId = segments[23].Id, StopId = stops[26].Id, StopSequence = 8 },
                 new RouteStop { SegmentId = segments[24].Id, StopId = stops[27].Id, StopSequence = 9 },
-                new RouteStop { SegmentId = segments[25].Id, StopId = stops[28].Id, StopSequence = 10 }
-             };
+                new RouteStop { SegmentId = segments[25].Id, StopId = stops[28].Id, StopSequence = 10 },
+
+                // Route 5 stops (Segments 26-28)
+                new RouteStop { SegmentId = segments[26].Id, StopId = stops[29].Id, StopSequence = 1 },
+                new RouteStop { SegmentId = segments[26].Id, StopId = stops[30].Id, StopSequence = 2 },
+                new RouteStop { SegmentId = segments[27].Id, StopId = stops[31].Id, StopSequence = 3 },
+                new RouteStop { SegmentId = segments[28].Id, StopId = stops[32].Id, StopSequence = 4 }
+            };
             context.RouteStops.AddRange(routeStops);
             context.SaveChanges();
         }
