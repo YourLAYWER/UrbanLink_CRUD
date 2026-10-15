@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using UrbanLink_CRUD.Models.Data;
 using UrbanLink_CRUD.Models.Entities.Transit;
+using UrbanLink_CRUD.Models.Enums;
 
 namespace UrbanLink_CRUD.Controllers
 {
@@ -55,6 +56,22 @@ namespace UrbanLink_CRUD.Controllers
         {
             if (id != ticket.TicketId)
                 return BadRequest();
+
+            _context.Entry(ticket).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+        [HttpPost("refund/{id}")]
+        public async Task<IActionResult> RefundTicket(int id)
+        {
+            var ticket = await _context.Tickets.FindAsync(id);
+            if (ticket == null)
+            {
+                return NotFound();
+            }
+
+            ticket.Status = (TicketStatus)1; // Explicitly cast 1 to the TicketStatus enum
 
             _context.Entry(ticket).State = EntityState.Modified;
             await _context.SaveChangesAsync();

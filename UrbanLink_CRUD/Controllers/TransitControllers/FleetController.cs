@@ -144,5 +144,44 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
             return Ok(new { data = availableBuses });
         }
+        [HttpPut("{id}/status")]
+        [Authorize(Roles = "Admin, Driver, Conductor")]
+        public async Task<IActionResult> UpdateBusStatus(int id, [FromBody] UpdateBusStatusRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.Status))
+            {
+                return BadRequest(new { message = "Request body or status cannot be empty." });
+            }
+
+            var bus = await _context.Buses.FindAsync(id);
+            if (bus == null)
+                return NotFound(new { message = "Bus not found." });
+
+            // Handle both string names ("Active", "InMaintenance") and numeric values/enums safely
+            if (Enum.TryParse<BusStatus>(request.Status.Trim(), true, out var parsedStatus))
+            {
+                bus.Status = parsedStatus;
+            }
+            else
+            {
+                // Fallback mapping if string doesn't match enum name directly
+                if (request.Status.Equals("Active", StringComparison.OrdinalIgnoreCase))
+                    bus.Status = (BusStatus)1; // Adjust based on your enum definition
+                else if (request.Status.Equals("InMaintenance", StringComparison.OrdinalIgnoreCase) || request.Status.Equals("Maintenance", StringComparison.OrdinalIgnoreCase))
+                    bus.Status = (BusStatus)2; // Adjust based on your enum definition
+                else
+                    return BadRequest(new { message = $"Invalid status value provided: '{request.Status}'" });
+            }
+
+            _context.Buses.Update(bus);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Bus status updated successfully.", busId = bus.Id, newStatus = bus.Status.ToString() });
+        }
+
+        public class UpdateBusStatusRequest
+        {
+            public string Status { get; set; } = string.Empty;
+        }
     }
 }
