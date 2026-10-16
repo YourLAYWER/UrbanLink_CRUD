@@ -211,6 +211,18 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             _context.UserJourneys.Add(userJourney);
             await _context.SaveChangesAsync();
 
+            // NEW: Write a Ticket row so admin reporting (ticket counts, provider chart) has real data
+            var primaryRouteId = routingResult.Legs.FirstOrDefault()?.RouteId;
+
+            var ticket = new Ticket
+            {
+                QRCodeData = userJourney.TicketReference.ToString(),
+                Status = TicketStatus.Active,
+                RouteId = primaryRouteId
+            };
+            _context.Tickets.Add(ticket);
+            await _context.SaveChangesAsync();
+
             // Extracting unique route IDs for the Firebase subscriptions
             var involvedRouteIds = routingResult.Legs
                 .Select(leg => leg.RouteId)

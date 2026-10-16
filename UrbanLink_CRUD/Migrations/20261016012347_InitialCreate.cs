@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace UrbanLink_CRUD.Migrations
 {
     /// <inheritdoc />
-    public partial class Initialcreate : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -59,27 +59,13 @@ namespace UrbanLink_CRUD.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Tickets",
-                columns: table => new
-                {
-                    TicketId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    QRCodeData = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Tickets", x => x.TicketId);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "TransitProviders",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
                     APIEndpoint = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
@@ -96,8 +82,10 @@ namespace UrbanLink_CRUD.Migrations
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Password = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CommuterProfile = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RefreshToken = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    RefreshTokenExpiryTime = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -126,15 +114,86 @@ namespace UrbanLink_CRUD.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Journeys",
+                columns: table => new
+                {
+                    JourneyID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    TicketReference = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    RedeemedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    EndStopID = table.Column<int>(type: "int", nullable: false),
+                    TotalCost = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Journeys", x => x.JourneyID);
+                    table.ForeignKey(
+                        name: "FK_Journeys_Stops_EndStopID",
+                        column: x => x.EndStopID,
+                        principalTable: "Stops",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TripDestinations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ShiftId = table.Column<int>(type: "int", nullable: false),
+                    StopId = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PassengersDroppingOff = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TripDestinations", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_TripDestinations_Stops_StopId",
+                        column: x => x.StopId,
+                        principalTable: "Stops",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Buses",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FleetNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    LicensePlate = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    SeatingCapacity = table.Column<int>(type: "int", nullable: false),
+                    StandingCapacity = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ProviderId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Buses", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Buses_TransitProviders_ProviderId",
+                        column: x => x.ProviderId,
+                        principalTable: "TransitProviders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "TransitRoute",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     RouteName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    TransportType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    TransportType = table.Column<int>(type: "int", nullable: false),
                     BaseFare = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    ProviderId = table.Column<int>(type: "int", nullable: false)
+                    ProviderId = table.Column<int>(type: "int", nullable: false),
+                    RouteMapPath = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -168,42 +227,27 @@ namespace UrbanLink_CRUD.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Journeys",
+                name: "Incidents",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<int>(type: "int", nullable: false),
-                    StartStopId = table.Column<int>(type: "int", nullable: false),
-                    EndStopId = table.Column<int>(type: "int", nullable: false),
-                    TotalCost = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    TotalDurationMinutes = table.Column<int>(type: "int", nullable: false),
+                    ReportedByUserId = table.Column<int>(type: "int", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    TicketReference = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    RedeemedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    AdminNotes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ReportedById = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Journeys", x => x.Id);
+                    table.PrimaryKey("PK_Incidents", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Journeys_Stops_EndStopId",
-                        column: x => x.EndStopId,
-                        principalTable: "Stops",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Journeys_Stops_StartStopId",
-                        column: x => x.StartStopId,
-                        principalTable: "Stops",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Journeys_Users_UserId",
-                        column: x => x.UserId,
+                        name: "FK_Incidents_Users_ReportedById",
+                        column: x => x.ReportedById,
                         principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -259,6 +303,150 @@ namespace UrbanLink_CRUD.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "UserJourneys",
+                columns: table => new
+                {
+                    JourneyID = table.Column<int>(type: "int", nullable: false),
+                    UserID = table.Column<int>(type: "int", nullable: false),
+                    StartStopID = table.Column<int>(type: "int", nullable: false),
+                    EstimatedArrivalTime = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserJourneys", x => x.JourneyID);
+                    table.ForeignKey(
+                        name: "FK_UserJourneys_Journeys_JourneyID",
+                        column: x => x.JourneyID,
+                        principalTable: "Journeys",
+                        principalColumn: "JourneyID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_UserJourneys_Stops_StartStopID",
+                        column: x => x.StartStopID,
+                        principalTable: "Stops",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_UserJourneys_Users_UserID",
+                        column: x => x.UserID,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ConductorShifts",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ConductorId = table.Column<int>(type: "int", nullable: false),
+                    BusId = table.Column<int>(type: "int", nullable: false),
+                    RouteId = table.Column<int>(type: "int", nullable: false),
+                    ShiftStartTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ShiftEndTime = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    TotalCashCollected = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    DigitalTicketScanned = table.Column<int>(type: "int", nullable: false),
+                    BusId1 = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ConductorShifts", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ConductorShifts_Buses_BusId",
+                        column: x => x.BusId,
+                        principalTable: "Buses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ConductorShifts_Buses_BusId1",
+                        column: x => x.BusId1,
+                        principalTable: "Buses",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ConductorShifts_TransitRoute_RouteId",
+                        column: x => x.RouteId,
+                        principalTable: "TransitRoute",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ConductorShifts_Users_ConductorId",
+                        column: x => x.ConductorId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "JourneyLegs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    JourneyId = table.Column<int>(type: "int", nullable: false),
+                    SequenceOrder = table.Column<int>(type: "int", nullable: false),
+                    RouteId = table.Column<int>(type: "int", nullable: false),
+                    BoardingStopId = table.Column<int>(type: "int", nullable: false),
+                    DestinationStopId = table.Column<int>(type: "int", nullable: false),
+                    LegFare = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    LegDurationMinutes = table.Column<int>(type: "int", nullable: false),
+                    TicketReference = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    RedeemedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_JourneyLegs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_JourneyLegs_Journeys_JourneyId",
+                        column: x => x.JourneyId,
+                        principalTable: "Journeys",
+                        principalColumn: "JourneyID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_JourneyLegs_Stops_BoardingStopId",
+                        column: x => x.BoardingStopId,
+                        principalTable: "Stops",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_JourneyLegs_Stops_DestinationStopId",
+                        column: x => x.DestinationStopId,
+                        principalTable: "Stops",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_JourneyLegs_TransitRoute_RouteId",
+                        column: x => x.RouteId,
+                        principalTable: "TransitRoute",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "RouteSchedules",
+                columns: table => new
+                {
+                    ScheduleId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RouteId = table.Column<int>(type: "int", nullable: false),
+                    DaysOfOperation = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FirstDepartureTime = table.Column<TimeSpan>(type: "time", nullable: false),
+                    LastDepartureTime = table.Column<TimeSpan>(type: "time", nullable: false),
+                    FrequencyMinutes = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RouteSchedules", x => x.ScheduleId);
+                    table.ForeignKey(
+                        name: "FK_RouteSchedules_TransitRoute_RouteId",
+                        column: x => x.RouteId,
+                        principalTable: "TransitRoute",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "RouteSegments",
                 columns: table => new
                 {
@@ -299,6 +487,26 @@ namespace UrbanLink_CRUD.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Tickets",
+                columns: table => new
+                {
+                    TicketId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    QRCodeData = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    RouteId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Tickets", x => x.TicketId);
+                    table.ForeignKey(
+                        name: "FK_Tickets_TransitRoute_RouteId",
+                        column: x => x.RouteId,
+                        principalTable: "TransitRoute",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "CartItems",
                 columns: table => new
                 {
@@ -322,52 +530,6 @@ namespace UrbanLink_CRUD.Migrations
                         column: x => x.ProductID,
                         principalTable: "Products",
                         principalColumn: "ProductID",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "JourneyLegs",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    JourneyId = table.Column<int>(type: "int", nullable: false),
-                    SequenceOrder = table.Column<int>(type: "int", nullable: false),
-                    RouteId = table.Column<int>(type: "int", nullable: false),
-                    BoardingStopId = table.Column<int>(type: "int", nullable: false),
-                    DestinationStopId = table.Column<int>(type: "int", nullable: false),
-                    LegFare = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    LegDurationMinutes = table.Column<int>(type: "int", nullable: false),
-                    TicketReference = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    RedeemedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_JourneyLegs", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_JourneyLegs_Journeys_JourneyId",
-                        column: x => x.JourneyId,
-                        principalTable: "Journeys",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_JourneyLegs_Stops_BoardingStopId",
-                        column: x => x.BoardingStopId,
-                        principalTable: "Stops",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_JourneyLegs_Stops_DestinationStopId",
-                        column: x => x.DestinationStopId,
-                        principalTable: "Stops",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_JourneyLegs_TransitRoute_RouteId",
-                        column: x => x.RouteId,
-                        principalTable: "TransitRoute",
-                        principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -396,6 +558,57 @@ namespace UrbanLink_CRUD.Migrations
                         principalTable: "Products",
                         principalColumn: "ProductID",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CashJourneys",
+                columns: table => new
+                {
+                    JourneyID = table.Column<int>(type: "int", nullable: false),
+                    ShiftID = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CashJourneys", x => x.JourneyID);
+                    table.ForeignKey(
+                        name: "FK_CashJourneys_ConductorShifts_ShiftID",
+                        column: x => x.ShiftID,
+                        principalTable: "ConductorShifts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_CashJourneys_Journeys_JourneyID",
+                        column: x => x.JourneyID,
+                        principalTable: "Journeys",
+                        principalColumn: "JourneyID",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "IncidentReports",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ConductorShiftId = table.Column<int>(type: "int", nullable: false),
+                    ReportedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IsEmergency = table.Column<bool>(type: "bit", nullable: false),
+                    Category = table.Column<int>(type: "int", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Latitude = table.Column<double>(type: "float", nullable: false),
+                    Longitude = table.Column<double>(type: "float", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    ResolvedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_IncidentReports", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_IncidentReports_ConductorShifts_ConductorShiftId",
+                        column: x => x.ConductorShiftId,
+                        principalTable: "ConductorShifts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -430,6 +643,11 @@ namespace UrbanLink_CRUD.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Buses_ProviderId",
+                table: "Buses",
+                column: "ProviderId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_CartItems_CartID",
                 table: "CartItems",
                 column: "CartID");
@@ -443,6 +661,41 @@ namespace UrbanLink_CRUD.Migrations
                 name: "IX_Carts_UserId",
                 table: "Carts",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CashJourneys_ShiftID",
+                table: "CashJourneys",
+                column: "ShiftID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConductorShifts_BusId",
+                table: "ConductorShifts",
+                column: "BusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConductorShifts_BusId1",
+                table: "ConductorShifts",
+                column: "BusId1");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConductorShifts_ConductorId",
+                table: "ConductorShifts",
+                column: "ConductorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConductorShifts_RouteId",
+                table: "ConductorShifts",
+                column: "RouteId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_IncidentReports_ConductorShiftId",
+                table: "IncidentReports",
+                column: "ConductorShiftId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Incidents_ReportedById",
+                table: "Incidents",
+                column: "ReportedById");
 
             migrationBuilder.CreateIndex(
                 name: "IX_JourneyLegs_BoardingStopId",
@@ -465,19 +718,9 @@ namespace UrbanLink_CRUD.Migrations
                 column: "RouteId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Journeys_EndStopId",
+                name: "IX_Journeys_EndStopID",
                 table: "Journeys",
-                column: "EndStopId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Journeys_StartStopId",
-                table: "Journeys",
-                column: "StartStopId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Journeys_UserId",
-                table: "Journeys",
-                column: "UserId");
+                column: "EndStopID");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Notifications_UserId",
@@ -510,6 +753,11 @@ namespace UrbanLink_CRUD.Migrations
                 column: "RetailerId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_RouteSchedules_RouteId",
+                table: "RouteSchedules",
+                column: "RouteId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RouteSegments_DestinationStopId",
                 table: "RouteSegments",
                 column: "DestinationStopId");
@@ -540,9 +788,29 @@ namespace UrbanLink_CRUD.Migrations
                 column: "StopId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Tickets_RouteId",
+                table: "Tickets",
+                column: "RouteId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TransitRoute_ProviderId",
                 table: "TransitRoute",
                 column: "ProviderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TripDestinations_StopId",
+                table: "TripDestinations",
+                column: "StopId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserJourneys_StartStopID",
+                table: "UserJourneys",
+                column: "StartStopID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserJourneys_UserID",
+                table: "UserJourneys",
+                column: "UserID");
         }
 
         /// <inheritdoc />
@@ -550,6 +818,15 @@ namespace UrbanLink_CRUD.Migrations
         {
             migrationBuilder.DropTable(
                 name: "CartItems");
+
+            migrationBuilder.DropTable(
+                name: "CashJourneys");
+
+            migrationBuilder.DropTable(
+                name: "IncidentReports");
+
+            migrationBuilder.DropTable(
+                name: "Incidents");
 
             migrationBuilder.DropTable(
                 name: "JourneyLegs");
@@ -564,16 +841,25 @@ namespace UrbanLink_CRUD.Migrations
                 name: "RetailerProducts");
 
             migrationBuilder.DropTable(
+                name: "RouteSchedules");
+
+            migrationBuilder.DropTable(
                 name: "RouteStops");
 
             migrationBuilder.DropTable(
                 name: "Tickets");
 
             migrationBuilder.DropTable(
+                name: "TripDestinations");
+
+            migrationBuilder.DropTable(
+                name: "UserJourneys");
+
+            migrationBuilder.DropTable(
                 name: "Carts");
 
             migrationBuilder.DropTable(
-                name: "Journeys");
+                name: "ConductorShifts");
 
             migrationBuilder.DropTable(
                 name: "Orders");
@@ -585,16 +871,22 @@ namespace UrbanLink_CRUD.Migrations
                 name: "RouteSegments");
 
             migrationBuilder.DropTable(
+                name: "Journeys");
+
+            migrationBuilder.DropTable(
+                name: "Buses");
+
+            migrationBuilder.DropTable(
                 name: "Retailers");
 
             migrationBuilder.DropTable(
                 name: "Users");
 
             migrationBuilder.DropTable(
-                name: "Stops");
+                name: "TransitRoute");
 
             migrationBuilder.DropTable(
-                name: "TransitRoute");
+                name: "Stops");
 
             migrationBuilder.DropTable(
                 name: "TransitProviders");
