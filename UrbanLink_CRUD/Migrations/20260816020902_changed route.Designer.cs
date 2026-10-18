@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UrbanLink_CRUD.Models.Data;
 
@@ -11,13 +12,15 @@ using UrbanLink_CRUD.Models.Data;
 namespace UrbanLink_CRUD.Migrations
 {
     [DbContext(typeof(ULDBContext))]
-    partial class ULDBContextModelSnapshot : ModelSnapshot
+    [Migration("20260816020902_changed route")]
+    partial class changedroute
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -232,186 +235,25 @@ namespace UrbanLink_CRUD.Migrations
                     b.ToTable("Notifications");
                 });
 
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Bus", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("FleetNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LicensePlate")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ProviderId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SeatingCapacity")
-                        .HasColumnType("int");
-
-                    b.Property<int>("StandingCapacity")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProviderId");
-
-                    b.ToTable("Buses");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.ConductorShift", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BusId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("BusId1")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ConductorId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("DigitalTicketScanned")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RouteId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ShiftEndTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("ShiftStartTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("TotalCashCollected")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BusId");
-
-                    b.HasIndex("BusId1");
-
-                    b.HasIndex("ConductorId");
-
-                    b.HasIndex("RouteId");
-
-                    b.ToTable("ConductorShifts");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Incident", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AdminNotes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("ReportedById")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ReportedByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReportedById");
-
-                    b.ToTable("Incidents");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.IncidentReport", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Category")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ConductorShiftId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsEmergency")
-                        .HasColumnType("bit");
-
-                    b.Property<double>("Latitude")
-                        .HasColumnType("float");
-
-                    b.Property<double>("Longitude")
-                        .HasColumnType("float");
-
-                    b.Property<DateTime>("ReportedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ResolvedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ConductorShiftId");
-
-                    b.ToTable("IncidentReports");
-                });
-
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Journey", b =>
                 {
-                    b.Property<int>("JourneyID")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("JourneyID"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("EndStopID")
+                    b.Property<int>("EndStopId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("RedeemedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("StartStopId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -421,16 +263,23 @@ namespace UrbanLink_CRUD.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("TotalCost")
-                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
-                    b.HasKey("JourneyID");
+                    b.Property<int>("TotalDurationMinutes")
+                        .HasColumnType("int");
 
-                    b.HasIndex("EndStopID");
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
 
-                    b.ToTable("Journeys", (string)null);
+                    b.HasKey("Id");
 
-                    b.UseTptMappingStrategy();
+                    b.HasIndex("EndStopId");
+
+                    b.HasIndex("StartStopId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Journeys");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.JourneyLeg", b =>
@@ -465,8 +314,9 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<int>("SequenceOrder")
                         .HasColumnType("int");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("TicketReference")
                         .HasColumnType("uniqueidentifier");
@@ -482,37 +332,6 @@ namespace UrbanLink_CRUD.Migrations
                     b.HasIndex("RouteId");
 
                     b.ToTable("JourneyLegs");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteSchedule", b =>
-                {
-                    b.Property<int>("ScheduleId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ScheduleId"));
-
-                    b.Property<string>("DaysOfOperation")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<TimeSpan>("FirstDepartureTime")
-                        .HasColumnType("time");
-
-                    b.Property<int>("FrequencyMinutes")
-                        .HasColumnType("int");
-
-                    b.Property<TimeSpan>("LastDepartureTime")
-                        .HasColumnType("time");
-
-                    b.Property<int>("RouteId")
-                        .HasColumnType("int");
-
-                    b.HasKey("ScheduleId");
-
-                    b.HasIndex("RouteId");
-
-                    b.ToTable("RouteSchedules");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteSegment", b =>
@@ -615,15 +434,10 @@ namespace UrbanLink_CRUD.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("RouteId")
-                        .HasColumnType("int");
-
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
                     b.HasKey("TicketId");
-
-                    b.HasIndex("RouteId");
 
                     b.ToTable("Tickets");
                 });
@@ -644,8 +458,9 @@ namespace UrbanLink_CRUD.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -663,53 +478,31 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<decimal>("BaseFare")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("ProviderId")
+                    b.Property<TimeSpan>("FirstDepartureTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("FrequencyMinutes")
                         .HasColumnType("int");
 
-                    b.Property<string>("RouteMapPath")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<TimeSpan>("LastDepartureTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("ProviderId")
+                        .HasColumnType("int");
 
                     b.Property<string>("RouteName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("TransportType")
-                        .HasColumnType("int");
+                    b.Property<string>("TransportType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ProviderId");
 
                     b.ToTable("TransitRoute", (string)null);
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.TripDestination", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("PassengersDroppingOff")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ShiftId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("StopId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StopId");
-
-                    b.ToTable("TripDestinations");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.User", b =>
@@ -719,6 +512,10 @@ namespace UrbanLink_CRUD.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CommuterProfile")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -735,51 +532,9 @@ namespace UrbanLink_CRUD.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("RefreshToken")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("RefreshTokenExpiryTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
 
                     b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.CashJourney", b =>
-                {
-                    b.HasBaseType("UrbanLink_CRUD.Models.Entities.Transit.Journey");
-
-                    b.Property<int>("ShiftID")
-                        .HasColumnType("int");
-
-                    b.HasIndex("ShiftID");
-
-                    b.ToTable("CashJourneys", (string)null);
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.UserJourney", b =>
-                {
-                    b.HasBaseType("UrbanLink_CRUD.Models.Entities.Transit.Journey");
-
-                    b.Property<DateTime>("EstimatedArrivalTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("StartStopID")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserID")
-                        .HasColumnType("int");
-
-                    b.HasIndex("StartStopID");
-
-                    b.HasIndex("UserID");
-
-                    b.ToTable("UserJourneys", (string)null);
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.Cart", b =>
@@ -872,75 +627,31 @@ namespace UrbanLink_CRUD.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Bus", b =>
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Journey", b =>
                 {
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.TransitProvider", "Provider")
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Stop", "EndStop")
                         .WithMany()
-                        .HasForeignKey("ProviderId")
+                        .HasForeignKey("EndStopId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Provider");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.ConductorShift", b =>
-                {
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Bus", "Bus")
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Stop", "StartStop")
                         .WithMany()
-                        .HasForeignKey("BusId")
+                        .HasForeignKey("StartStopId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Bus", null)
-                        .WithMany("ConductorShifts")
-                        .HasForeignKey("BusId1");
-
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.User", "Conductor")
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("ConductorId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.TransitRoute", "Route")
-                        .WithMany()
-                        .HasForeignKey("RouteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                    b.Navigation("EndStop");
 
-                    b.Navigation("Bus");
+                    b.Navigation("StartStop");
 
-                    b.Navigation("Conductor");
-
-                    b.Navigation("Route");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Incident", b =>
-                {
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.User", "ReportedBy")
-                        .WithMany()
-                        .HasForeignKey("ReportedById");
-
-                    b.Navigation("ReportedBy");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.IncidentReport", b =>
-                {
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.ConductorShift", "ConductorShift")
-                        .WithMany("IncidentReports")
-                        .HasForeignKey("ConductorShiftId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ConductorShift");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Journey", b =>
-                {
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Stop", null)
-                        .WithMany()
-                        .HasForeignKey("EndStopID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.JourneyLeg", b =>
@@ -976,17 +687,6 @@ namespace UrbanLink_CRUD.Migrations
                     b.Navigation("Journey");
 
                     b.Navigation("Route");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteSchedule", b =>
-                {
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.TransitRoute", "TransitRoute")
-                        .WithMany("Schedules")
-                        .HasForeignKey("RouteId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("TransitRoute");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteSegment", b =>
@@ -1043,15 +743,6 @@ namespace UrbanLink_CRUD.Migrations
                     b.Navigation("Stop");
                 });
 
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Ticket", b =>
-                {
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.TransitRoute", "Route")
-                        .WithMany()
-                        .HasForeignKey("RouteId");
-
-                    b.Navigation("Route");
-                });
-
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.TransitRoute", b =>
                 {
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.TransitProvider", "Provider")
@@ -1061,57 +752,6 @@ namespace UrbanLink_CRUD.Migrations
                         .IsRequired();
 
                     b.Navigation("Provider");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.TripDestination", b =>
-                {
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Stop", "Stop")
-                        .WithMany()
-                        .HasForeignKey("StopId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Stop");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.CashJourney", b =>
-                {
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Journey", null)
-                        .WithOne()
-                        .HasForeignKey("UrbanLink_CRUD.Models.Entities.Transit.CashJourney", "JourneyID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.ConductorShift", "Shift")
-                        .WithMany("CashJourneys")
-                        .HasForeignKey("ShiftID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Shift");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.UserJourney", b =>
-                {
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Journey", null)
-                        .WithOne()
-                        .HasForeignKey("UrbanLink_CRUD.Models.Entities.Transit.UserJourney", "JourneyID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.Stop", null)
-                        .WithMany()
-                        .HasForeignKey("StartStopID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("UrbanLink_CRUD.Models.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Aggregator.Cart", b =>
@@ -1131,18 +771,6 @@ namespace UrbanLink_CRUD.Migrations
                     b.Navigation("Orders");
 
                     b.Navigation("RetailerProducts");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Bus", b =>
-                {
-                    b.Navigation("ConductorShifts");
-                });
-
-            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.ConductorShift", b =>
-                {
-                    b.Navigation("CashJourneys");
-
-                    b.Navigation("IncidentReports");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Journey", b =>
@@ -1167,8 +795,6 @@ namespace UrbanLink_CRUD.Migrations
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.TransitRoute", b =>
                 {
-                    b.Navigation("Schedules");
-
                     b.Navigation("Segments");
                 });
 #pragma warning restore 612, 618
