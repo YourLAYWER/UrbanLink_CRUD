@@ -152,9 +152,12 @@ using (var scope = app.Services.CreateScope())
 
         // Seed transit tables
         DbInitializer.SeedAdminUser(context);
-        DbInitializer.SeedBuses(context);
+        //DbInitializer.SeedBuses(context);
         DbInitializer.SeedTransitProviders(context);
         DbInitializer.SeedTransitSystem(context);
+        DbInitializer.SeedBulkBuses(context);
+        DbInitializer.SeedBulkClients(context);
+        DbInitializer.SeedMockJourneys(context);
 
         var routingService = services.GetRequiredService<ITransitRoutingService>();
         var logger = services.GetRequiredService<ILogger<Program>>();

@@ -1,4 +1,5 @@
 ﻿using BCrypt.Net;
+using Microsoft.EntityFrameworkCore;
 using UrbanLink_CRUD.Models.Entities;
 using UrbanLink_CRUD.Models.Entities.Transit;
 using UrbanLink_CRUD.Models.Enums;
@@ -91,47 +92,45 @@ namespace UrbanLink_CRUD.Models.Data
             }
         }
 
-        public static void SeedBuses(ULDBContext context)
-        {
-            if (!context.Buses.Any())
-            {
-                var provider = context.TransitProviders.FirstOrDefault(p => p.Name == "Algoa Bus");
+        //public static void SeedBuses(ULDBContext context)
+        //{
+            
+        //        var provider = context.TransitProviders.FirstOrDefault(p => p.Name == "Algoa Bus");
 
-                if (provider != null)
-                {
-                    context.Buses.AddRange(
-                        new Bus
-                        {
-                            FleetNumber = "ALGOA-042",
-                            LicensePlate = "CAA 12345",
-                            SeatingCapacity = 60,
-                            StandingCapacity = 15,
-                            Status = BusStatus.Active,
-                            ProviderId = provider.Id
-                        },
-                        new Bus
-                        {
-                            FleetNumber = "ALGOA-088",
-                            LicensePlate = "CAA 67890",
-                            SeatingCapacity = 60,
-                            StandingCapacity = 15,
-                            Status = BusStatus.Active,
-                            ProviderId = provider.Id
-                        },
-                        new Bus
-                        {
-                            FleetNumber = "ALGOA-099",
-                            LicensePlate = "CAA 11223",
-                            SeatingCapacity = 45,
-                            StandingCapacity = 10,
-                            Status = BusStatus.InMaintenance,
-                            ProviderId = provider.Id
-                        }
-                    );
-                    context.SaveChanges();
-                }
-            }
-        }
+        //        if (provider != null)
+        //        {
+        //            context.Buses.AddRange(
+        //                new Bus
+        //                {
+        //                    FleetNumber = "ALGOA-042",
+        //                    LicensePlate = "CAA 12345",
+        //                    SeatingCapacity = 60,
+        //                    StandingCapacity = 15,
+        //                    Status = BusStatus.Active,
+        //                    ProviderId = provider.Id
+        //                },
+        //                new Bus
+        //                {
+        //                    FleetNumber = "ALGOA-088",
+        //                    LicensePlate = "CAA 67890",
+        //                    SeatingCapacity = 60,
+        //                    StandingCapacity = 15,
+        //                    Status = BusStatus.Active,
+        //                    ProviderId = provider.Id
+        //                },
+        //                new Bus
+        //                {
+        //                    FleetNumber = "ALGOA-099",
+        //                    LicensePlate = "CAA 11223",
+        //                    SeatingCapacity = 45,
+        //                    StandingCapacity = 10,
+        //                    Status = BusStatus.InMaintenance,
+        //                    ProviderId = provider.Id
+        //                }
+        //            );
+        //            context.SaveChanges();
+        //        }
+        //}
 
         public static void SeedTransitSystem(ULDBContext context)
         {
@@ -365,6 +364,196 @@ namespace UrbanLink_CRUD.Models.Data
                     StopSequence = i + 1
                 });
             }
+        }
+
+        public static void SeedMockJourneys(ULDBContext context)
+        {
+            Console.WriteLine("[Seeder] Checking if journeys already exist...");
+            if (context.Journeys.Any())
+            {
+                Console.WriteLine("[Seeder] Journeys already exist. Skipping mock seeding.");
+                return;
+            }
+
+            // Eagerly load Route Segments so we know valid stop IDs and route details
+            var routes = context.TransitRoutes.Include(r => r.Segments).ToList();
+            Console.WriteLine($"[Seeder] Found {routes.Count} routes available for seeding.");
+
+            if (!routes.Any())
+            {
+                Console.WriteLine("[Seeder] ABORT: No routes found in database! Make sure SeedTransitSystem runs first.");
+                return;
+            }
+
+            var random = new Random();
+            var journeysToSeed = new List<Journey>();
+
+            // Span across the past 7 days
+            for (int dayOffset = 6; dayOffset >= 0; dayOffset--)
+            {
+                var targetDate = DateTime.UtcNow.AddDays(-dayOffset);
+
+                // Generate 25 tickets per day
+                for (int i = 0; i < 25; i++)
+                {
+                    var route = routes[random.Next(routes.Count)];
+                    int hour = random.Next(6, 22);
+                    int minute = random.Next(0, 60);
+                    var createdAt = new DateTime(targetDate.Year, targetDate.Month, targetDate.Day, hour, minute, 0, DateTimeKind.Utc);
+
+                    // Grab a valid segment to anchor the journey and leg
+                    var firstSegment = route.Segments.FirstOrDefault();
+                    int endStopId = firstSegment != null ? route.Segments.Last().DestinationStopId : 1;
+
+                    var journey = new Journey
+                    {
+                        Status = JourneyStatus.Completed,
+                        CreatedAt = createdAt,
+                        TicketReference = Guid.NewGuid(),
+                        TotalCost = route.BaseFare,
+                        EndStopID = endStopId,
+                        Legs = new List<JourneyLeg>()
+                    };
+
+                    if (firstSegment != null)
+                    {
+                        journey.Legs.Add(new JourneyLeg
+                        {
+                            SequenceOrder = 1,
+                            RouteId = route.Id,
+                            BoardingStopId = firstSegment.OriginStopId,
+                            DestinationStopId = firstSegment.DestinationStopId,
+                            LegFare = route.BaseFare,
+                            LegDurationMinutes = firstSegment.TravelTimeMinutes,
+                            TicketReference = journey.TicketReference,
+                            Status = IncidentStatus.Open
+                        });
+                    }
+
+                    journeysToSeed.Add(journey);
+                }
+            }
+
+            context.Journeys.AddRange(journeysToSeed);
+            context.SaveChanges();
+            Console.WriteLine($"[Seeder] Successfully saved {journeysToSeed.Count} mock journeys with legs to the database!");
+        }
+
+        public static void SeedBulkBuses(ULDBContext context)
+        {
+            // Only seed if we haven't already populated a large fleet
+            if (context.Buses.Count() >= 45)
+            {
+                return;
+            }
+
+            //// Seed a few specific buses for the "Algoa Bus" provider ////////////////////
+            var GenericProvider = context.TransitProviders.FirstOrDefault(p => p.Name == "Algoa Bus");
+
+            if (GenericProvider != null)
+            {
+                context.Buses.AddRange(
+                    new Bus
+                    {
+                        FleetNumber = "ALGOA-042",
+                        LicensePlate = "CAA 12345",
+                        SeatingCapacity = 60,
+                        StandingCapacity = 15,
+                        Status = BusStatus.Active,
+                        ProviderId = GenericProvider.Id
+                    },
+                    new Bus
+                    {
+                        FleetNumber = "ALGOA-088",
+                        LicensePlate = "CAA 67890",
+                        SeatingCapacity = 60,
+                        StandingCapacity = 15,
+                        Status = BusStatus.Active,
+                        ProviderId = GenericProvider.Id
+                    },
+                    new Bus
+                    {
+                        FleetNumber = "ALGOA-099",
+                        LicensePlate = "CAA 11223",
+                        SeatingCapacity = 45,
+                        StandingCapacity = 10,
+                        Status = BusStatus.InMaintenance,
+                        ProviderId = GenericProvider.Id
+                    }
+                );
+                context.SaveChanges();
+            }
+
+            //// END of Seed a few specific buses for the "Algoa Bus" provider ////////////////////
+
+            var providers = context.TransitProviders.ToList();
+            if (!providers.Any()) return;
+
+            var random = new Random();
+            var busesToSeed = new List<Bus>();
+            var statuses = new[] { BusStatus.Active, BusStatus.Active, BusStatus.Active, BusStatus.InMaintenance };
+
+            for (int i = 1; i <= 50; i++)
+            {
+                var provider = providers[random.Next(providers.Count)];
+                string prefix = provider.Name == "PRASA" ? "TRAIN" : "BUS";
+
+                busesToSeed.Add(new Bus
+                {
+                    FleetNumber = $"{prefix}-{i:D3}",
+                    LicensePlate = $"CAA {random.Next(10000, 99999)}",
+                    SeatingCapacity = random.Next(2) == 0 ? 60 : 45,
+                    StandingCapacity = 15,
+                    Status = statuses[random.Next(statuses.Length)],
+                    ProviderId = provider.Id
+                });
+            }
+
+            context.Buses.AddRange(busesToSeed);
+            context.SaveChanges();
+            Console.WriteLine($"[Seeder] Successfully seeded {busesToSeed.Count} buses!");
+        }
+
+        public static void SeedBulkClients(ULDBContext context)
+        {
+            // Check if we already have a rich user base
+            if (context.Users.Count(u => u.Role == Role.StandardUser) >= 100)
+            {
+                return;
+            }
+
+            var firstNames = new[] { "Sipho", "Anathi", "Lwazi", "Zinhle", "Mandla", "Amahle", "Themba", "Khanyiso", "Nelisiwe", "Bongani", "Chantel", "Michael", "Jessica", "David", "Nomvula" };
+            var lastNames = new[] { "Mthembu", "Dlamini", "Khumalo", "Nkosi", "Ndlovu", "Zuma", "Mokoena", "Molefe", "Botha", "Van Wyk", "Smith", "Johnson", "Pillay", "Naidoo" };
+
+            var random = new Random();
+            var usersToSeed = new List<User>();
+            string defaultPasswordHash = BCrypt.Net.BCrypt.HashPassword("UserSecure@2026!", 10);
+
+            for (int i = 1; i <= 120; i++)
+            {
+                string fName = firstNames[random.Next(firstNames.Length)];
+                string lName = lastNames[random.Next(lastNames.Length)];
+                string email = $"{fName.ToLower()}.{lName.ToLower()}{i}@urbanlink.co.za";
+
+                // Prevent rare email collision
+                if (usersToSeed.Any(u => u.Email == email) || context.Users.Any(u => u.Email == email))
+                {
+                    continue;
+                }
+
+                usersToSeed.Add(new User
+                {
+                    Name = $"{fName} {lName}",
+                    Email = email,
+                    Password = defaultPasswordHash,
+                    Role = Role.StandardUser,
+                    CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 30))
+                });
+            }
+
+            context.Users.AddRange(usersToSeed);
+            context.SaveChanges();
+            Console.WriteLine($"[Seeder] Successfully seeded {usersToSeed.Count} client accounts!");
         }
     }
 }
