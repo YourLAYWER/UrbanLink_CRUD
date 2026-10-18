@@ -146,8 +146,12 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+
     try
     {
+        logger.LogInformation(">>> STARTING DATABASE SEEDING & GRAPH INITIALIZATION <<<");
+
         var context = services.GetRequiredService<ULDBContext>();
 
         // Seed transit tables
@@ -155,6 +159,10 @@ using (var scope = app.Services.CreateScope())
         DbInitializer.SeedBuses(context);
         DbInitializer.SeedTransitProviders(context);
         DbInitializer.SeedTransitSystem(context);
+        DbInitializer.SeedBulkBuses(context);
+        DbInitializer.SeedBulkClients(context);
+        DbInitializer.SeedMockJourneys(context); // This will now log its progress
+
 
         var routingService = services.GetRequiredService<ITransitRoutingService>();
 
@@ -197,11 +205,12 @@ using (var scope = app.Services.CreateScope())
             .ToList();
 
         routingService.InitializeGraph(graphEdges, hubIds);
+        logger.LogInformation(">>> SEEDING & GRAPH INITIALIZATION COMPLETED SUCCESSFULLY <<<");
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while initializing the graph or seeding the database.");
+        var loggerService = services.GetRequiredService<ILogger<Program>>();
+        loggerService.LogError(ex, ">>> CRITICAL ERROR DURING SEEDING/INITIALIZATION: {Message} <<<", ex.Message);
     }
 }
 
