@@ -12,15 +12,15 @@ using UrbanLink_CRUD.Models.Data;
 namespace UrbanLink_CRUD.Migrations
 {
     [DbContext(typeof(ULDBContext))]
-    [Migration("20260918203015_InitialMigrationForNine")]
-    partial class InitialMigrationForNine
+    [Migration("20261011171757_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -317,6 +317,45 @@ namespace UrbanLink_CRUD.Migrations
                     b.ToTable("ConductorShifts");
                 });
 
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Incident", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AdminNotes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ReportedById")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReportedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportedById");
+
+                    b.ToTable("Incidents");
+                });
+
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.IncidentReport", b =>
                 {
                     b.Property<int>("Id")
@@ -345,6 +384,9 @@ namespace UrbanLink_CRUD.Migrations
                         .HasColumnType("float");
 
                     b.Property<DateTime>("ReportedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ResolvedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("Status")
@@ -456,6 +498,9 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<string>("DaysOfOperation")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Direction")
+                        .HasColumnType("int");
 
                     b.Property<TimeSpan>("FirstDepartureTime")
                         .HasColumnType("time");
@@ -619,8 +664,15 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<decimal>("BaseFare")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<bool>("IsBidirectional")
+                        .HasColumnType("bit");
+
                     b.Property<int>("ProviderId")
                         .HasColumnType("int");
+
+                    b.Property<string>("RouteMapPath")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RouteName")
                         .IsRequired()
@@ -686,6 +738,12 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RefreshToken")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RefreshTokenExpiryTime")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -858,6 +916,15 @@ namespace UrbanLink_CRUD.Migrations
                     b.Navigation("Conductor");
 
                     b.Navigation("Route");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Incident", b =>
+                {
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.User", "ReportedBy")
+                        .WithMany()
+                        .HasForeignKey("ReportedById");
+
+                    b.Navigation("ReportedBy");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.IncidentReport", b =>

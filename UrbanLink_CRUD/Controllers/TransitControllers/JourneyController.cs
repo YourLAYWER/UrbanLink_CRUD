@@ -10,7 +10,7 @@ using UrbanLink_CRUD.Models.Dtos.TransitDtos;
 using UrbanLink_CRUD.Models.Entities.Transit;
 using UrbanLink_CRUD.Models.Enums;
 using UrbanLink_CRUD.Services.RoutingLogic;
-using static UrbanLink_CRUD.Services.RoutingLogic.RoutingContex;
+using RoutingContext = UrbanLink_CRUD.Services.RoutingLogic.RoutingContext;
 
 namespace UrbanLink_CRUD.Controllers.TransitControllers
 {
@@ -85,7 +85,9 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // DEBUG: Hardcode time to 10:00 AM today
             // ==========================================
             var today = DateTime.UtcNow.Date;
-            var currentDateTime = new DateTime(today.Year, today.Month, today.Day, 10, 0, 0, DateTimeKind.Utc);
+            int daysUntilMonday = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
+            var targetDay = today.AddDays(daysUntilMonday);
+            var currentDateTime = new DateTime(today.Year, today.Month, targetDay.Day, 10, 0, 0, DateTimeKind.Utc);
             //var currentDateTime = DateTime.UtcNow;
 
             // 1. STRATEGY EXECUTION: Route based on user preference (Fastest, Cheapest, etc.)

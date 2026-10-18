@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using UrbanLink_CRUD.Models.Enums;
 
 namespace UrbanLink_CRUD.Models.Entities.Transit
 {
@@ -14,6 +15,8 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
 
         // EF Core Navigation Property (Allows you to easily query connected Route data)
         public TransitRoute TransitRoute { get; set; }
+
+        public RouteDirections Direction { get; set; } = RouteDirections.Outbound;
         public required string DaysOfOperation { get; set; }
 
         public required TimeSpan FirstDepartureTime { get; set; }

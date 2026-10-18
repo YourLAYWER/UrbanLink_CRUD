@@ -156,56 +156,18 @@ using (var scope = app.Services.CreateScope())
 
         // Seed transit tables
         DbInitializer.SeedAdminUser(context);
-        DbInitializer.SeedBuses(context);
+        //DbInitializer.SeedBuses(context);
         DbInitializer.SeedTransitProviders(context);
         DbInitializer.SeedTransitSystem(context);
         DbInitializer.SeedBulkBuses(context);
         DbInitializer.SeedBulkClients(context);
-        DbInitializer.SeedMockJourneys(context); // This will now log its progress
-
+        DbInitializer.SeedMockJourneys(context);
 
         var routingService = services.GetRequiredService<ITransitRoutingService>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
 
-        var dbSegments = context.RouteSegments
-            .Include(s => s.Route)
-                .ThenInclude(r => r.Schedules)
-            .ToList();
-
-        var graphEdges = new List<GraphEdge>();
-
-        foreach (var routeGroup in dbSegments.GroupBy(s => s.RouteId))
-        {
-            var routeSegments = routeGroup.ToList();
-
-            var currentSegment = routeSegments.FirstOrDefault(s =>
-                !routeSegments.Any(other => other.DestinationStopId == s.OriginStopId));
-
-            int currentOffset = 0;
-
-            while (currentSegment != null)
-            {
-                graphEdges.Add(new GraphEdge(
-                    currentSegment.OriginStopId,
-                    currentSegment.DestinationStopId,
-                    currentSegment.RouteId,
-                    currentSegment.TravelTimeMinutes,
-                    currentSegment.Route.BaseFare,
-                    currentOffset,
-                    currentSegment.Route.Schedules.ToList()
-                ));
-
-                currentOffset += currentSegment.TravelTimeMinutes;
-                currentSegment = routeSegments.FirstOrDefault(s => s.OriginStopId == currentSegment.DestinationStopId);
-            }
-        }
-
-        var hubIds = context.Stops
-            .Where(s => s.IsTransferHub)
-            .Select(s => s.Id)
-            .ToList();
-
-        routingService.InitializeGraph(graphEdges, hubIds);
-        logger.LogInformation(">>> SEEDING & GRAPH INITIALIZATION COMPLETED SUCCESSFULLY <<<");
+        var (edges, hubIds) = TransitGraphLoader.Load(context, logger);
+        routingService.InitializeGraph(edges, hubIds);
     }
     catch (Exception ex)
     {

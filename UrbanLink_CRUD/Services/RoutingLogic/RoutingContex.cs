@@ -1,11 +1,8 @@
 ﻿namespace UrbanLink_CRUD.Services.RoutingLogic
 {
-    public record RoutingContex
-    {
-        public record RoutingContext(
+        public readonly record struct RoutingContext(
         int StartStopId,
         int TargetStopId,
-        DateTime UserDepartureTime
-        );
-    }
+        DateTime UserDepartureTime);
+
 }
