@@ -162,6 +162,7 @@ using (var scope = app.Services.CreateScope())
         DbInitializer.SeedBulkBuses(context);
         DbInitializer.SeedBulkClients(context);
         DbInitializer.SeedMockJourneys(context);
+        DbInitializer.SeedConductorShifts(context);
 
         var routingService = services.GetRequiredService<ITransitRoutingService>();
 

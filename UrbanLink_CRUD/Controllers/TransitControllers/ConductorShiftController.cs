@@ -563,37 +563,35 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 terminatedShiftIds = activeCrewShifts.Select(s => s.Id).ToList()
             });
         }
-        [HttpGet("reports")]
-        [Authorize(Roles = "Admin, Conductor, Driver")]
-        public async Task<IActionResult> GetShiftReport([FromQuery] string date)
+        [HttpGet("audit-report")]
+        public async Task<IActionResult> GetShiftAuditReport()
         {
-            if (!DateTime.TryParse(date, out var targetDate))
-            {
-                targetDate = DateTime.Today;
-            }
+            var reports = await _context.ConductorShifts
+                .Include(s => s.Conductor)
+                .Include(s => s.Bus)
+                .Include(s => s.Route)
+                .OrderByDescending(s => s.ShiftStartTime)
+                .Select(s => new
+                {
+                    ShiftId = s.Id,
+                    // Resolving Foreign Keys to actual names
+                    ConductorName = s.Conductor != null ? s.Conductor.Name : "Unknown Conductor",
+                    ConductorEmail = s.Conductor != null ? s.Conductor.Email : "N/A",
+                    BusFleetNumber = s.Bus != null ? s.Bus.FleetNumber : "N/A",
+                    RouteName = s.Route != null ? s.Route.RouteName : "Unassigned Route",
 
-            // Fetch shifts for the specified date
-            var shifts = await _context.ConductorShifts
-                .Include(cs => cs.Conductor)
-                .Include(cs => cs.Bus)
-                .Include(cs => cs.Route)
-                .Where(cs => cs.ShiftStartTime.Date == targetDate.Date)
+                    // Timestamps & Metrics
+                    ShiftStartTime = s.ShiftStartTime.ToString("yyyy-MM-dd HH:mm"),
+                    ShiftEndTime = s.ShiftEndTime.HasValue ? s.ShiftEndTime.Value.ToString("yyyy-MM-dd HH:mm") : "ONGOING",
+                    TotalCashCollected = s.TotalCashCollected,
+                    DigitalTicketScanned = s.DigitalTicketScanned,
+
+                    // Computed Total Revenue
+                    TotalShiftRevenue = s.TotalCashCollected + (s.DigitalTicketScanned * 15.00m) // Assuming R15.00 base fare
+                })
                 .ToListAsync();
 
-            // If there is no data, you can return a lightweight JSON or handle it via your PDF generator.
-            // To ensure the download always succeeds even with empty data, we return a structured payload 
-            // or a default PDF with a "No data to display" message.
-
-            using var memoryStream = new MemoryStream();
-
-            // Simple text/byte fallback or PDF generation logic
-            string reportContent = shifts.Count == 0
-                ? $"--- URBANLINK SHIFT REPORT ---\nDate: {targetDate:yyyy-MM-dd}\nStatus: No data to display for this date."
-                : $"--- URBANLINK SHIFT REPORT ---\nDate: {targetDate:yyyy-MM-dd}\nTotal Shifts: {shifts.Count}\nTotal Cash Collected: R{shifts.Sum(s => s.TotalCashCollected):F2}";
-
-            var bytes = System.Text.Encoding.UTF8.GetBytes(reportContent);
-
-            return File(bytes, "application/pdf", $"ShiftReport_{targetDate:yyyy-MM-dd}.pdf");
+            return Ok(reports);
         }
     }
 }

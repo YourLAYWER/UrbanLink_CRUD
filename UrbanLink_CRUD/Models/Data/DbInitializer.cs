@@ -555,5 +555,167 @@ namespace UrbanLink_CRUD.Models.Data
             context.SaveChanges();
             Console.WriteLine($"[Seeder] Successfully seeded {usersToSeed.Count} client accounts!");
         }
+        public static void SeedConductorShifts(ULDBContext context)
+        {
+            // ==========================================
+            // 1. ENSURE FLEET OF 30 BUSES IS SEEDED
+            // ==========================================
+            if (context.Buses.Count() < 30)
+            {
+                var genericProvider = context.TransitProviders.FirstOrDefault(p => p.Name == "Algoa Bus");
+
+                if (genericProvider != null && !context.Buses.Any(b => b.FleetNumber == "ALGOA-042"))
+                {
+                    context.Buses.AddRange(
+                        new Bus { FleetNumber = "ALGOA-042", LicensePlate = "CAA 12345", SeatingCapacity = 60, StandingCapacity = 15, Status = BusStatus.Active, ProviderId = genericProvider.Id },
+                        new Bus { FleetNumber = "ALGOA-088", LicensePlate = "CAA 67890", SeatingCapacity = 60, StandingCapacity = 15, Status = BusStatus.Active, ProviderId = genericProvider.Id },
+                        new Bus { FleetNumber = "ALGOA-099", LicensePlate = "CAA 11223", SeatingCapacity = 45, StandingCapacity = 10, Status = BusStatus.InMaintenance, ProviderId = genericProvider.Id }
+                    );
+                    context.SaveChanges();
+                }
+
+                var providers = context.TransitProviders.ToList();
+                if (providers.Any())
+                {
+                    var random = new Random();
+                    var busesToSeed = new List<Bus>();
+                    var statuses = new[] { BusStatus.Active, BusStatus.Active, BusStatus.Active, BusStatus.InMaintenance };
+
+                    int currentCount = context.Buses.Count();
+                    int targetTotal = 30;
+
+                    for (int i = 1; i <= (targetTotal - currentCount); i++)
+                    {
+                        var provider = providers[random.Next(providers.Count)];
+                        string prefix = provider.Name == "PRASA" ? "TRAIN" : "BUS";
+
+                        busesToSeed.Add(new Bus
+                        {
+                            FleetNumber = $"{prefix}-{i:D3}",
+                            LicensePlate = $"CAA {random.Next(10000, 99999)}",
+                            SeatingCapacity = random.Next(2) == 0 ? 60 : 45,
+                            StandingCapacity = 15,
+                            Status = statuses[random.Next(statuses.Length)],
+                            ProviderId = provider.Id
+                        });
+                    }
+
+                    if (busesToSeed.Any())
+                    {
+                        context.Buses.AddRange(busesToSeed);
+                        context.SaveChanges();
+                    }
+                }
+            }
+
+            // ==========================================
+            // 2. SEED SHIFTS FOR YONGAMA MAKHALA
+            // ==========================================
+            if (context.ConductorShifts.Any())
+            {
+                return; // Prevents duplicate shift seeding
+            }
+
+            // Find our conductor: Yongama Makhala (Auto-create if missing so it never fails!)
+            var conductor = context.Users.FirstOrDefault(u => u.Name == "Yongama Makhala" || u.Email == "conductor@urbanlink.co.za");
+            if (conductor == null)
+            {
+                conductor = new User
+                {
+                    Name = "Yongama Makhala",
+                    Email = "conductor@urbanlink.co.za",
+                    Password = BCrypt.Net.BCrypt.HashPassword("ConductorSecure@2026!", 10),
+                    Role = Role.Conductor, // Ensure your Role enum matches
+                    CreatedAt = DateTime.UtcNow
+                };
+                context.Users.Add(conductor);
+                context.SaveChanges();
+                Console.WriteLine("[Seeder] Auto-created conductor Yongama Makhala.");
+            }
+
+            // Define all 5 route names
+            var routeNames = new[]
+            {
+        "Route 1: Greenacres to Central",
+        "Route 2: Central to NMU South",
+        "Route 3: Sydenhem to Gqeberha CBD",
+        "Route 4: Uitenhage station to Gqeberha Train Station",
+        "Route 5: Kempston Rd to Greenacres"
+    };
+
+            // Ensure all 5 routes exist in the database (auto-create placeholders if SeedTransitSystem hasn't made them yet)
+            foreach (var rName in routeNames)
+            {
+                if (!context.TransitRoutes.Any(r => r.RouteName == rName))
+                {
+                    var defaultProvider = context.TransitProviders.FirstOrDefault() ?? new TransitProvider { Name = "Algoa Bus" };
+                    if (defaultProvider.Id == 0) { context.TransitProviders.Add(defaultProvider); context.SaveChanges(); }
+
+                    context.TransitRoutes.Add(new TransitRoute
+                    {
+                        RouteName = rName,
+                        ProviderId = defaultProvider.Id
+                    });
+                }
+            }
+            context.SaveChanges();
+
+            // Grab our specific named buses
+            var targetFleetNumbers = new[] { "ALGOA-042", "ALGOA-088", "ALGOA-099" };
+            var specificBuses = context.Buses
+                .Where(b => targetFleetNumbers.Contains(b.FleetNumber))
+                .ToList();
+
+            if (!specificBuses.Any())
+            {
+                specificBuses = context.Buses.Take(3).ToList();
+            }
+
+            var shifts = new List<ConductorShift>();
+
+            // Seed historical completed shifts across all 5 routes for Yongama Makhala
+            for (int i = 0; i < routeNames.Length; i++)
+            {
+                var routeName = routeNames[i];
+                var route = context.TransitRoutes.FirstOrDefault(r => r.RouteName == routeName);
+                if (route == null) continue;
+
+                var bus = specificBuses[i % specificBuses.Count];
+
+                shifts.Add(new ConductorShift
+                {
+                    ConductorId = conductor.Id,
+                    BusId = bus.Id,
+                    RouteId = route.Id,
+                    ShiftStartTime = DateTime.UtcNow.AddDays(-routeNames.Length + i).Date.AddHours(6),
+                    ShiftEndTime = DateTime.UtcNow.AddDays(-routeNames.Length + i).Date.AddHours(14),
+                    TotalCashCollected = 450.00m + (i * 65.50m),
+                    DigitalTicketScanned = 15 + (i * 3)
+                });
+            }
+
+            // Seed 1 active ongoing shift for today
+            var primaryRoute = context.TransitRoutes.FirstOrDefault(r => r.RouteName == routeNames[0]);
+            var primaryBus = context.Buses.FirstOrDefault(b => b.FleetNumber == "ALGOA-042") ?? specificBuses.FirstOrDefault();
+
+            if (primaryRoute != null && primaryBus != null)
+            {
+                shifts.Add(new ConductorShift
+                {
+                    ConductorId = conductor.Id,
+                    BusId = primaryBus.Id,
+                    RouteId = primaryRoute.Id,
+                    ShiftStartTime = DateTime.UtcNow.Date.AddHours(6),
+                    ShiftEndTime = null, // Ongoing shift
+                    TotalCashCollected = 310.00m,
+                    DigitalTicketScanned = 14
+                });
+            }
+
+            context.ConductorShifts.AddRange(shifts);
+            context.SaveChanges();
+
+            Console.WriteLine($"[Seeder] Successfully verified 30 total buses and seeded {shifts.Count} shifts for {conductor.Name}!");
+        }
     }
 }
