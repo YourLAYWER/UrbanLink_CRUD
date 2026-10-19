@@ -385,5 +385,37 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 newStatus = journey.Status.ToString()
             });
         }
+        [HttpGet("revenue-over-time")]
+        public async Task<IActionResult> GetRevenueOverTime([FromQuery] string timeframe = "30days")
+        {
+            int days = timeframe switch
+            {
+                "7days" => 7,
+                "today" => 1,
+                _ => 30
+            };
+
+            var cutoffDate = DateTime.UtcNow.AddDays(-days);
+
+            // Query journeys matching the timeframe
+            var rawData = await _context.Journeys
+                .Where(j => j.CreatedAt >= cutoffDate)
+                .GroupBy(j => j.CreatedAt.Date)
+                .Select(g => new
+                {
+                    RawDate = g.Key,
+                    Revenue = g.Sum(j => j.TotalCost)
+                })
+                .OrderBy(x => x.RawDate)
+                .ToListAsync();
+
+            var result = rawData.Select(x => new
+            {
+                Date = x.RawDate.ToString("MMM dd"),
+                Revenue = x.Revenue
+            });
+
+            return Ok(result);
+        }
     }
 }

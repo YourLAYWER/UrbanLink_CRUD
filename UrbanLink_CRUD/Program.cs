@@ -164,15 +164,14 @@ using (var scope = app.Services.CreateScope())
         DbInitializer.SeedMockJourneys(context);
 
         var routingService = services.GetRequiredService<ITransitRoutingService>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
 
+        // Reusing the existing 'logger' variable instead of redeclaring it
         var (edges, hubIds) = TransitGraphLoader.Load(context, logger);
         routingService.InitializeGraph(edges, hubIds);
     }
     catch (Exception ex)
     {
-        var loggerService = services.GetRequiredService<ILogger<Program>>();
-        loggerService.LogError(ex, ">>> CRITICAL ERROR DURING SEEDING/INITIALIZATION: {Message} <<<", ex.Message);
+        logger.LogError(ex, ">>> CRITICAL ERROR DURING SEEDING/INITIALIZATION: {Message} <<<", ex.Message);
     }
 }
 
