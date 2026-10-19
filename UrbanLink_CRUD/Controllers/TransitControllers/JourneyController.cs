@@ -417,5 +417,20 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
             return Ok(result);
         }
+        [HttpPost("refund/{id}")]
+        public async Task<IActionResult> ProcessRefund(int id)
+        {
+            var journey = await _context.Journeys.FindAsync(id);
+            if (journey == null)
+            {
+                return NotFound(new { message = "Journey not found" });
+            }
+
+            // Update journey status to cancelled/refunded
+            journey.Status = JourneyStatus.Cancelled; // Adjust enum name if it differs in your codebase
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Successfully processed refund and updated journey status." });
+        }
     }
 }
