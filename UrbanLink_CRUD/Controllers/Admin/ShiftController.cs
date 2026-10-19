@@ -17,25 +17,26 @@ namespace UrbanLink_CRUD.Controllers.Admin
             _context = context;
         }
 
-        // GET: api/admin/shift/active
-        // Live dashboard: every currently active shift, with driver/vehicle/route detail
-        [HttpGet("active")]
-        public async Task<ActionResult<IEnumerable<object>>> GetActiveShifts()
+       
+        // GET: api/admin/shift
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<object>>> GetShifts()
         {
             var shifts = await _context.ConductorShifts
                 .Include(s => s.Conductor)
                 .Include(s => s.Bus)
                 .Include(s => s.Route)
-                .Where(s => s.ShiftEndTime == null) // In the new model, a null EndTime means "Active"
+                .OrderByDescending(s => s.ShiftStartTime) // Show newest shifts first
+                .Take(100) // Safety limit: only grab the 100 most recent shifts
                 .Select(s => new
                 {
                     Id = s.Id,
-                    // Map to the frontend's expected properties using the new relationships
                     DriverName = s.Conductor != null ? s.Conductor.Name : "Unknown",
                     VehicleRegistration = s.Bus != null ? s.Bus.LicensePlate : "Unassigned",
                     Route = s.Route != null ? s.Route.RouteName : "Not set",
                     StartTime = s.ShiftStartTime,
-                    Status = "Active"
+                    EndTime = s.ShiftEndTime, // Add this!
+                    Status = s.ShiftEndTime == null ? "Active" : "Closed" // Dynamic status
                 })
                 .ToListAsync();
 
