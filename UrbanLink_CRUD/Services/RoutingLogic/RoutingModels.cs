@@ -34,8 +34,12 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
         public int EndStopId { get; set; }
         public int LegDurationMinutes { get; set; }
         public decimal LegFare { get; set; }
+        // Minutes after the search time at which the vehicle leaves StartStopId / reaches EndStopId.
+        public int DepartureOffsetMinutes { get; set; }
+        public int ArrivalOffsetMinutes { get; set; }
     }
 
     public record RoutingResult(int TotalTimeMinutes, List<JourneyLeg> Legs);
+
 
 }
