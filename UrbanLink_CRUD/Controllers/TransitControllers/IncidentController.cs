@@ -51,7 +51,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 return Ok(new
                 {
                     message = request.IsEmergency ? "EMERGENCY SOS LOGGED." : "Routine incident logged successfully.",
-                    timestamp = DateTime.UtcNow
+                    timestamp = DateTime.Now
                 });
             }
             catch (NotSupportedException ex)
@@ -70,7 +70,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         public async Task<IActionResult> GetRouteStatus(int routeId)
         {
             // 1. Define the expiration window (e.g., ignore anything older than __ hours)
-            var expirationWindow = DateTime.UtcNow.AddHours(-1);
+            var expirationWindow = DateTime.Now.AddHours(-1);
 
             var activeAlert = await _context.IncidentReports
                 .Include(i => i.ConductorShift)
@@ -154,7 +154,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // Automatically set ResolvedAt timestamp when an incident is closed
             if (dto.Status == "Resolved" && incident.ResolvedAt == null)
             {
-                incident.ResolvedAt = DateTime.UtcNow; // Or DateTime.Now depending on your timezone logic
+                incident.ResolvedAt = DateTime.Now; // Or DateTime.Now depending on your timezone logic
             }
 
             await _context.SaveChangesAsync();

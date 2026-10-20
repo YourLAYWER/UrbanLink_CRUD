@@ -84,11 +84,11 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // ==========================================
             // DEBUG: Hardcode time to 10:00 AM today
             // ==========================================
-            var today = DateTime.UtcNow.Date;
+            var today = DateTime.Now.Date;
             int daysUntilMonday = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
             var targetDay = today.AddDays(daysUntilMonday);
-            var currentDateTime = new DateTime(today.Year, today.Month, targetDay.Day, 10, 0, 0, DateTimeKind.Utc);
-            //var currentDateTime = DateTime.UtcNow;
+            //var currentDateTime = new DateTime(today.Year, today.Month, targetDay.Day, 10, 0, 0, DateTimeKind.Utc);
+            var currentDateTime = DateTime.Now;
 
             // 1. STRATEGY EXECUTION: Route based on user preference (Fastest, Cheapest, etc.)
             var routingResult = _routingService.ComputeRoute(
@@ -172,8 +172,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // DEBUG: Hardcode time to 10:00 AM today
             // ==========================================
             var today = DateTime.UtcNow.Date;
-            //var currentDateTime = DateTime.UtcNow;
-            var currentDateTime = new DateTime(today.Year, today.Month, today.Day, 10, 0, 0, DateTimeKind.Utc);
+            var currentDateTime = DateTime.Now;
+            //var currentDateTime = new DateTime(today.Year, today.Month, today.Day, 10, 0, 0, DateTimeKind.Utc);
 
             // 2. Execute the chosen algorithm
             var routeContext = new RoutingContext(request.StartStopId, request.EndStopId, currentDateTime);
@@ -304,7 +304,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 .Select(l => l.RouteId)
                 .ToList();
 
-            var expirationWindow = DateTime.UtcNow.AddHours(-2);
+            var expirationWindow = DateTime.Now.AddHours(-2);
 
             // 3. Drill through Shift -> Bus to get the physical vehicle details
             var activeAlert = await _context.IncidentReports
@@ -372,7 +372,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // Optional: Automatically stamp the RedeemedAt time when it gets completed
             if (newStatus == JourneyStatus.Completed && journey.RedeemedAt == null)
             {
-                journey.RedeemedAt = DateTime.UtcNow;
+                journey.RedeemedAt = DateTime.Now;
             }
 
             await _context.SaveChangesAsync();
@@ -385,6 +385,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 newStatus = journey.Status.ToString()
             });
         }
+
         [HttpGet("revenue-over-time")]
         public async Task<IActionResult> GetRevenueOverTime([FromQuery] string timeframe = "30days")
         {
@@ -395,7 +396,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 _ => 30
             };
 
-            var cutoffDate = DateTime.UtcNow.AddDays(-days);
+            var cutoffDate = DateTime.Now.AddDays(-days);
 
             // Query journeys matching the timeframe
             var rawData = await _context.Journeys
