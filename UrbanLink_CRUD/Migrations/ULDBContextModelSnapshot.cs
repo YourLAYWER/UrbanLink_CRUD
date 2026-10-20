@@ -614,14 +614,22 @@ namespace UrbanLink_CRUD.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TicketId"));
 
+                    b.Property<DateTime>("PurchasedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("QRCodeData")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("RouteId")
+                        .HasColumnType("int");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
                     b.HasKey("TicketId");
+
+                    b.HasIndex("RouteId");
 
                     b.ToTable("Tickets");
                 });
@@ -1042,6 +1050,15 @@ namespace UrbanLink_CRUD.Migrations
                     b.Navigation("RouteSegment");
 
                     b.Navigation("Stop");
+                });
+
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.Ticket", b =>
+                {
+                    b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.TransitRoute", "Route")
+                        .WithMany()
+                        .HasForeignKey("RouteId");
+
+                    b.Navigation("Route");
                 });
 
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.TransitRoute", b =>

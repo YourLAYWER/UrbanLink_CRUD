@@ -90,13 +90,11 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                     paymentType = j.JourneyID % 3 == 0 ? "Physical Cash" : "Card / Digital"
                 })
                 .ToListAsync();
-
-<<<<<<< HEAD
             return Ok(journeys);
         }
 
-=======
->>>>>>> e89c1df41b64d705077fa7be66f47add0144b3df
+
+
         [HttpPost("calculate")]
         public async Task<IActionResult> CalculateRoute([FromBody] RouteCalculateRequest request)
         {
@@ -179,13 +177,11 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (request.StartStopId == request.EndStopId)
                 return BadRequest(new { message = "Start and destination cannot be the same." });
 
-            // Placeholder for the future "fastest / cheapest" choice (e.g. request.Strategy ?? "fastest").
-            // The routing service picks the strategy from this same string.
             var preference = "fastest";
-            _routingFactory.GetStrategy(preference);   // kept for the upcoming strategy selection
+            _routingFactory.GetStrategy(preference);
 
-            // Same clock as CalculateRoute: rounded UP to the next whole minute, because the router
-            // works in whole minutes. Every time below is derived from this one value.
+            // TEMPORARY for testing: fixed 09:00. Swap back to DateTime.Now once routing works.
+            //var now = RoundUpToMinute(DateTime.Today.AddHours(9));
             // NOTE: DateTime.Now is server-local time; on a UTC host, convert to the agency's time zone.
             var now = RoundUpToMinute(DateTime.Now);
 
@@ -194,20 +190,16 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 targetStopId: request.EndStopId,
                 userDepartureTime: now,
                 preference: preference);
-
             if (routingResult.TotalTimeMinutes == -1 || !routingResult.Legs.Any())
                 return BadRequest(new { message = "Invalid route." });
 
             decimal trueBaseCost = routingResult.Legs.Sum(leg => leg.LegFare);
 
-            // Identity and role come from the JWT, never from the request body.
             if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
             var userProfile = User.FindFirstValue(ClaimTypes.Role) ?? "Standard";
 
-            // Authoritative price, computed with the SAME time the route was planned for,
-            // so it matches what /calculate quoted.
             var fareContext = new FareCalculationContext(trueBaseCost, now, userProfile);
             decimal secureFinalFare = _fareFactory.GetStrategy(fareContext).CalculateFare(fareContext);
 
@@ -222,11 +214,25 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 routingResult.Legs);
 
             _context.UserJourneys.Add(userJourney);
+
+            // ONE ticket per journey, attributed to the provider of the first leg.
+            var primaryRouteId = routingResult.Legs.First().RouteId;
+
+            _context.Tickets.Add(new Ticket
+            {
+                QRCodeData = userJourney.TicketReference.ToString(),
+                Status = TicketStatus.Active,
+                RouteId = primaryRouteId,
+                PurchasedAt = DateTime.Now
+            });
+
+            // Single save: journey and ticket succeed or fail together.
             await _context.SaveChangesAsync();
 
-            // Unique route IDs for the Firebase subscriptions
+
+
             var involvedRouteIds = routingResult.Legs
-                .Select(leg => leg.RouteId)
+                .Select(l => l.RouteId)
                 .Distinct()
                 .ToList();
 
@@ -240,8 +246,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 estimatedArrivalTime = userJourney.EstimatedArrivalTime.ToString("HH:mm"),
                 ticketStatus = userJourney.Status.ToString(),
                 routeIds = involvedRouteIds,
-
-                // New, additive: when each vehicle actually leaves, taken straight from the router.
                 legs = routingResult.Legs.Select(l => new
                 {
                     l.RouteId,
@@ -338,18 +342,33 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 return BadRequest(new { message = "Ticket is expired and no longer valid." });
             }
 
-            // 4. Update the status
+            // 4. Update the journey status
             journey.Status = newStatus;
 
-            // Optional: Automatically stamp the RedeemedAt time when it gets completed
+            // Automatically stamp the RedeemedAt time when it gets completed
             if (newStatus == JourneyStatus.Completed && journey.RedeemedAt == null)
             {
                 journey.RedeemedAt = DateTime.Now;
             }
 
+            // 5. Keep the Ticket row in sync (admin Ticket page reads from Tickets)
+            var ticket = await _context.Tickets
+                .FirstOrDefaultAsync(t => t.QRCodeData == journey.TicketReference.ToString());
+            if (ticket != null)
+            {
+                ticket.Status = newStatus switch
+                {
+                    JourneyStatus.Completed => TicketStatus.Used,
+                    JourneyStatus.Expired => TicketStatus.Expired,
+                    JourneyStatus.Cancelled => TicketStatus.Expired,
+                    _ => TicketStatus.Active
+                };
+            }
+
+            // One save: journey and ticket change together
             await _context.SaveChangesAsync();
 
-            // 5. Return success, converting the Enum back to a string for the Android JSON response
+            // 6. Return success, converting the Enum back to a string for the Android JSON response
             return Ok(new
             {
                 message = $"Ticket successfully marked as {newStatus}.",
@@ -390,6 +409,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
             return Ok(result);
         }
+
         [HttpPost("refund/{id}")]
         public async Task<IActionResult> ProcessRefund(int id)
         {
@@ -400,7 +420,15 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             }
 
             // Update journey status to cancelled/refunded
-            journey.Status = JourneyStatus.Cancelled; // Adjust enum name if it differs in your codebase
+            journey.Status = JourneyStatus.Cancelled;
+
+            // Keep the Ticket row in sync
+            var refundTicket = await _context.Tickets
+                .FirstOrDefaultAsync(t => t.QRCodeData == journey.TicketReference.ToString());
+            if (refundTicket != null)
+                refundTicket.Status = TicketStatus.Expired;
+
+            // One save: journey and ticket change together
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Successfully processed refund and updated journey status." });
