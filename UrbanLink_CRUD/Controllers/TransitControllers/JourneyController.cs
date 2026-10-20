@@ -91,9 +91,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 })
                 .ToListAsync();
 
+<<<<<<< HEAD
             return Ok(journeys);
         }
 
+=======
+>>>>>>> e89c1df41b64d705077fa7be66f47add0144b3df
         [HttpPost("calculate")]
         public async Task<IActionResult> CalculateRoute([FromBody] RouteCalculateRequest request)
         {
