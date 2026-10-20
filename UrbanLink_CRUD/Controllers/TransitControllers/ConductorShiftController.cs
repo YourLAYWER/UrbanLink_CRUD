@@ -365,6 +365,11 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             {
                 var walkOnJourney = _journeyFactory.CreateCashJourney(shift.Id, shift.Route.BaseFare, endStopId);
 
+                // ==========================================
+                // CRITICAL FIX: Add the cash journey to the context
+                // ==========================================
+                _context.CashJourneys.Add(walkOnJourney);
+
                 string displayTicketId = $"CASH-{walkOnJourney.TicketReference.ToString().Substring(0, 8).ToUpper()}";
 
                 issuedTickets.Add(new PrintedTicketDto
@@ -372,12 +377,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                     TicketId = displayTicketId,
                     RouteName = shift.Route.RouteName,
                     FarePaid = shift.Route.BaseFare,
-                    IssuedAt = walkOnJourney.RedeemedAt.Value
+                    IssuedAt = walkOnJourney.RedeemedAt ?? DateTime.UtcNow
                 });
             }
 
             _context.ConductorShifts.Update(shift);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(); // This will now commit both the shift update and all generated cash journeys!
 
             // 6. Build the active queue using RouteStop sequence numbers and Stop names
             var activeQueue = await _context.RouteStops
@@ -395,7 +400,6 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                                SequenceNumber = x.RouteStop.StopSequence,
                                PassengersDroppingOff = journeys.Count()
                            })
-                // Optional: Only include stops that have active drop-offs or are part of the active queue sequence
                 .Where(q => q.PassengersDroppingOff > 0)
                 .OrderBy(q => q.SequenceNumber)
                 .ToListAsync();
