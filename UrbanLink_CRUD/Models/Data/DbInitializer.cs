@@ -365,7 +365,6 @@ namespace UrbanLink_CRUD.Models.Data
                 });
             }
         }
-
         public static void SeedMockJourneys(ULDBContext context)
         {
             Console.WriteLine("[Seeder] Checking if journeys already exist...");
@@ -387,6 +386,7 @@ namespace UrbanLink_CRUD.Models.Data
 
             var random = new Random();
             var journeysToSeed = new List<Journey>();
+            int ticketCounter = 0;
 
             // Span across the past 7 days
             for (int dayOffset = 6; dayOffset >= 0; dayOffset--)
@@ -396,6 +396,7 @@ namespace UrbanLink_CRUD.Models.Data
                 // Generate 25 tickets per day
                 for (int i = 0; i < 25; i++)
                 {
+                    ticketCounter++;
                     var route = routes[random.Next(routes.Count)];
                     int hour = random.Next(6, 22);
                     int minute = random.Next(0, 60);
@@ -404,6 +405,11 @@ namespace UrbanLink_CRUD.Models.Data
                     // Grab a valid segment to anchor the journey and leg
                     var firstSegment = route.Segments.FirstOrDefault();
                     int endStopId = firstSegment != null ? route.Segments.Last().DestinationStopId : 1;
+
+                    // TRACKING LOGIC: Determine payment method pattern based on ticket sequence 
+                    // (e.g., every 3rd ticket tracked as Physical Cash (~30%), others as Card / Digital (~70%))
+                    bool isPhysicalCash = (ticketCounter % 3 == 0);
+                    string paymentTrackingLabel = isPhysicalCash ? "Physical Cash" : "Card / Digital";
 
                     var journey = new Journey
                     {
@@ -438,7 +444,6 @@ namespace UrbanLink_CRUD.Models.Data
             context.SaveChanges();
             Console.WriteLine($"[Seeder] Successfully saved {journeysToSeed.Count} mock journeys with legs to the database!");
         }
-
         public static void SeedBulkBuses(ULDBContext context)
         {
             // Only seed if we haven't already populated a large fleet

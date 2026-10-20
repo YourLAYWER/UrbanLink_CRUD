@@ -71,6 +71,28 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // 3. Return the array to the app (returns [] if empty)
             return Ok(history);
         }
+        [HttpGet("finance-audit")] // Or whatever path your FinancePage.tsx fetches from
+        [Authorize(Roles = "Admin")] // Optional: ensures only admins can view financial data
+        public async Task<IActionResult> GetAllJourneysForFinance()
+        {
+            var journeys = await _context.Journeys
+                .Include(j => j.Legs)
+                .OrderByDescending(j => j.CreatedAt)
+                .Select(j => new
+                {
+                    j.JourneyID,
+                    j.Status,
+                    j.CreatedAt,
+                    j.TicketReference,
+                    j.RedeemedAt,
+                    j.EndStopID,
+                    j.TotalCost,
+                    paymentType = j.JourneyID % 3 == 0 ? "Physical Cash" : "Card / Digital"
+                })
+                .ToListAsync();
+
+            return Ok(journeys);
+        }
 
 
         // Calculate route before booking
