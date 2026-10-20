@@ -77,7 +77,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 ConductorId = conductorId,
                 BusId = request.BusId,
                 RouteId = request.RouteId,
-                ShiftStartTime = DateTime.UtcNow,
+                ShiftStartTime = DateTime.Now,
                 TotalCashCollected = 0,
                 DigitalTicketScanned = 0
             };
@@ -136,11 +136,11 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             foreach (var skipped in skippedLegs)
             {
                 // Stamping them with the current time effectively consumes them so they cannot be reused
-                skipped.RedeemedAt = DateTime.UtcNow;
+                skipped.RedeemedAt = DateTime.Now;
             }
 
             // 6. Redeem the current leg
-            currentLeg.RedeemedAt = DateTime.UtcNow;
+            currentLeg.RedeemedAt = DateTime.Now;
             shift.DigitalTicketScanned += 1;
 
             // 7. Check if this is the final leg of the journey
@@ -149,7 +149,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (isFinalLeg)
             {
                 journey.Status = JourneyStatus.Completed;
-                journey.RedeemedAt = DateTime.UtcNow;
+                journey.RedeemedAt = DateTime.Now;
             }
 
             _context.Journeys.Update(journey);
@@ -377,7 +377,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                     TicketId = displayTicketId,
                     RouteName = shift.Route.RouteName,
                     FarePaid = shift.Route.BaseFare,
-                    IssuedAt = walkOnJourney.RedeemedAt ?? DateTime.UtcNow
+                    IssuedAt = walkOnJourney.RedeemedAt ?? DateTime.Now
                 });
             }
 
@@ -514,7 +514,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (activeShift == null)
                 return BadRequest(new { message = "No active shift found. You are already clocked out." });
 
-            activeShift.ShiftEndTime = DateTime.UtcNow;
+            activeShift.ShiftEndTime = DateTime.Now;
 
             _context.ConductorShifts.Update(activeShift);
             await _context.SaveChangesAsync();
@@ -555,7 +555,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // 2. Terminate all active shifts
             foreach (var shift in activeCrewShifts)
             {
-                shift.ShiftEndTime = DateTime.UtcNow;
+                shift.ShiftEndTime = DateTime.Now;
             }
 
             _context.ConductorShifts.UpdateRange(activeCrewShifts);

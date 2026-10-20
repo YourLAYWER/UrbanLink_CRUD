@@ -94,148 +94,134 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             return Ok(journeys);
         }
 
-
-        // Calculate route before booking
         [HttpPost("calculate")]
         public async Task<IActionResult> CalculateRoute([FromBody] RouteCalculateRequest request)
         {
             if (request.StartStopId == request.EndStopId)
                 return BadRequest(new { message = "Start and destination cannot be the same." });
 
-            // Use live server time instead of the hardcoded test date
-            // ==========================================
-            // DEBUG: Hardcode time to 10:00 AM today
-            // ==========================================
-            var today = DateTime.UtcNow.Date;
-            int daysUntilMonday = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
-            var targetDay = today.AddDays(daysUntilMonday);
-            var currentDateTime = new DateTime(today.Year, today.Month, targetDay.Day, 10, 0, 0, DateTimeKind.Utc);
-            //var currentDateTime = DateTime.UtcNow;
+            // The router works in whole minutes and rounds the time UP to the next minute, so we
+            // round up here too. Every time we display is then based on the exact instant it used.
+            // NOTE: DateTime.Now is server-local time. Fine on your dev machine; on a UTC host,
+            // convert with TimeZoneInfo to the agency's time zone instead.
+            var now = RoundUpToMinute(DateTime.Now);
 
-            // 1. STRATEGY EXECUTION: Route based on user preference (Fastest, Cheapest, etc.)
             var routingResult = _routingService.ComputeRoute(
                 startStopId: request.StartStopId,
                 targetStopId: request.EndStopId,
-                userDepartureTime: currentDateTime,
-                preference: "fastest" //
-            );
+                userDepartureTime: now,
+                preference: "fastest");
 
             if (routingResult.TotalTimeMinutes == -1 || !routingResult.Legs.Any())
                 return NotFound(new { message = "No valid route found between these stops." });
 
-            // 2. Get the raw base cost from the selected route
             decimal totalBaseCost = routingResult.Legs.Sum(leg => leg.LegFare);
 
-            // ==========================================
-            // STRATEGY EXECUTION: Dynamic Fare Pricing
-            // ==========================================
             string userProfile = User.FindFirstValue(ClaimTypes.Role) ?? "Standard";
+            var fareContext = new FareCalculationContext(totalBaseCost, now, userProfile);
+            decimal finalFare = _fareFactory.GetStrategy(fareContext).CalculateFare(fareContext);
 
-            var fareContext = new FareCalculationContext(totalBaseCost, currentDateTime, userProfile);
-            var fareStrategy = _fareFactory.GetStrategy(fareContext);
-            decimal finalFare = fareStrategy.CalculateFare(fareContext);
+            // Two queries total, instead of two FindAsync calls per leg.
+            var stopIds = routingResult.Legs.Select(l => l.StartStopId)
+                .Append(request.EndStopId).Distinct().ToList();
+            var routeIds = routingResult.Legs.Select(l => l.RouteId).Distinct().ToList();
 
-            // ==========================================
-            // BACKWARD MATH LOGIC
-            // ==========================================
-            var finalArrivalTime = currentDateTime.AddMinutes(routingResult.TotalTimeMinutes);
-            int physicalTravelTime = routingResult.Legs.Sum(l => l.LegDurationMinutes);
-            int totalTransfers = routingResult.Legs.Count - 1;
-            int transferPenalties = totalTransfers > 0 ? (totalTransfers * 10) : 0;
-            var currentLegBoardingTime = finalArrivalTime.AddMinutes(-(physicalTravelTime + transferPenalties));
+            var stopNames = await _context.Stops
+                .Where(s => stopIds.Contains(s.Id))
+                .ToDictionaryAsync(s => s.Id, s => s.Name);
+            var routeNames = await _context.TransitRoutes
+                .Where(r => routeIds.Contains(r.Id))
+                .ToDictionaryAsync(r => r.Id, r => r.RouteName);
 
             var responseSegments = new List<RouteSegmentDto>();
 
             foreach (var leg in routingResult.Legs)
             {
-                var startStop = await _context.Stops.FindAsync(leg.StartStopId);
-                var routeInfo = await _context.TransitRoutes.FindAsync(leg.RouteId);
-                var legArrivalTime = currentLegBoardingTime.AddMinutes(leg.LegDurationMinutes);
-
                 responseSegments.Add(new RouteSegmentDto
                 {
                     StopId = leg.StartStopId,
-                    StopName = startStop?.Name ?? "Unknown Stop",
-                    TransitLine = routeInfo?.RouteName ?? "Unknown Route",
-                    ArrivalTime = currentLegBoardingTime.ToString("HH:mm")
+                    StopName = stopNames.GetValueOrDefault(leg.StartStopId, "Unknown Stop"),
+                    TransitLine = routeNames.GetValueOrDefault(leg.RouteId, "Unknown Route"),
+                    // Time the vehicle leaves this stop - straight from the router, no back-calculation.
+                    ArrivalTime = now.AddMinutes(leg.DepartureOffsetMinutes).ToString("HH:mm")
                 });
-
-                currentLegBoardingTime = legArrivalTime.AddMinutes(10);
             }
 
-            var finalStop = await _context.Stops.FindAsync(request.EndStopId);
             responseSegments.Add(new RouteSegmentDto
             {
                 StopId = request.EndStopId,
-                StopName = finalStop?.Name ?? "Destination",
+                StopName = stopNames.GetValueOrDefault(request.EndStopId, "Destination"),
                 TransitLine = "Arrive",
-                ArrivalTime = finalArrivalTime.ToString("HH:mm")
+                ArrivalTime = now.AddMinutes(routingResult.TotalTimeMinutes).ToString("HH:mm")
             });
 
-            var response = new RouteCalculateResponse
+            return Ok(new RouteCalculateResponse
             {
                 BaseCost = totalBaseCost,
                 FinalFare = finalFare,
                 EstimatedDurationMinutes = routingResult.TotalTimeMinutes,
                 Segments = responseSegments
-            };
-
-            return Ok(response);
+            });
         }
+
+        private static DateTime RoundUpToMinute(DateTime t) =>
+            new DateTime((t.Ticks + TimeSpan.TicksPerMinute - 1) / TimeSpan.TicksPerMinute * TimeSpan.TicksPerMinute, t.Kind);
+
+
 
         [HttpPost("book")]
         [Authorize]
         public async Task<IActionResult> BookJourney([FromBody] BookingRequestDto request)
         {
-            // 1. Resolve the algorithm based on user preference
-            var routingStrategy = _routingFactory.GetStrategy("fastest");// Might add preference later be dynamic based on user preference or other factors
+            if (request.StartStopId == request.EndStopId)
+                return BadRequest(new { message = "Start and destination cannot be the same." });
 
-            // ==========================================
-            // DEBUG: Hardcode time to 10:00 AM today
-            // ==========================================
-            var today = DateTime.UtcNow.Date;
-            //var currentDateTime = DateTime.UtcNow;
-            var currentDateTime = new DateTime(today.Year, today.Month, today.Day, 10, 0, 0, DateTimeKind.Utc);
+            // Placeholder for the future "fastest / cheapest" choice (e.g. request.Strategy ?? "fastest").
+            // The routing service picks the strategy from this same string.
+            var preference = "fastest";
+            _routingFactory.GetStrategy(preference);   // kept for the upcoming strategy selection
 
-            // 2. Execute the chosen algorithm
-            var routeContext = new RoutingContext(request.StartStopId, request.EndStopId, currentDateTime);
+            // Same clock as CalculateRoute: rounded UP to the next whole minute, because the router
+            // works in whole minutes. Every time below is derived from this one value.
+            // NOTE: DateTime.Now is server-local time; on a UTC host, convert to the agency's time zone.
+            var now = RoundUpToMinute(DateTime.Now);
+
             var routingResult = _routingService.ComputeRoute(
                 startStopId: request.StartStopId,
                 targetStopId: request.EndStopId,
-                userDepartureTime: currentDateTime,
-                preference: "fastest" // Pass the user's choice here
-            );
+                userDepartureTime: now,
+                preference: preference);
 
-
-            if (routingResult.TotalTimeMinutes == -1)
+            if (routingResult.TotalTimeMinutes == -1 || !routingResult.Legs.Any())
                 return BadRequest(new { message = "Invalid route." });
 
             decimal trueBaseCost = routingResult.Legs.Sum(leg => leg.LegFare);
 
-            // 2. Extract identity and role securely from the JWT token
-            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            // Identity and role come from the JWT, never from the request body.
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
+
             var userProfile = User.FindFirstValue(ClaimTypes.Role) ?? "Standard";
 
-            // 3. Re-run the Strategy Pattern to generate the authoritative final price
-            var fareContext = new FareCalculationContext(trueBaseCost, DateTime.UtcNow, userProfile);
+            // Authoritative price, computed with the SAME time the route was planned for,
+            // so it matches what /calculate quoted.
+            var fareContext = new FareCalculationContext(trueBaseCost, now, userProfile);
             decimal secureFinalFare = _fareFactory.GetStrategy(fareContext).CalculateFare(fareContext);
 
-            // 4. Create the normalized UserJourney entity
+            var estimatedArrival = now.AddMinutes(routingResult.TotalTimeMinutes);
+
             var userJourney = _journeyFactory.CreateUserJourney(
-                int.Parse(userIdString),
+                userId,
                 request.StartStopId,
                 request.EndStopId,
                 secureFinalFare,
-                currentDateTime.AddMinutes(routingResult.TotalTimeMinutes),
-                routingResult.Legs
-
-            );
-            //
+                estimatedArrival,
+                routingResult.Legs);
 
             _context.UserJourneys.Add(userJourney);
             await _context.SaveChangesAsync();
 
-            // Extracting unique route IDs for the Firebase subscriptions
+            // Unique route IDs for the Firebase subscriptions
             var involvedRouteIds = routingResult.Legs
                 .Select(leg => leg.RouteId)
                 .Distinct()
@@ -250,59 +236,20 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 estimatedDurationMinutes = routingResult.TotalTimeMinutes,
                 estimatedArrivalTime = userJourney.EstimatedArrivalTime.ToString("HH:mm"),
                 ticketStatus = userJourney.Status.ToString(),
-                routeIds = involvedRouteIds // Add the array to the payload
+                routeIds = involvedRouteIds,
+
+                // New, additive: when each vehicle actually leaves, taken straight from the router.
+                legs = routingResult.Legs.Select(l => new
+                {
+                    l.RouteId,
+                    direction = l.Direction.ToString(),
+                    l.StartStopId,
+                    l.EndStopId,
+                    departureTime = now.AddMinutes(l.DepartureOffsetMinutes).ToString("HH:mm"),
+                    arrivalTime = now.AddMinutes(l.ArrivalOffsetMinutes).ToString("HH:mm")
+                })
             });
         }
-
-        //[HttpGet("tickets/{ticketReference}/status")]
-        //public async Task<IActionResult> GetTicketStatus(Guid ticketReference)
-        //{
-        //    var journey = await _context.Journeys
-        //        .Include(j => j.Legs)
-        //        .FirstOrDefaultAsync(j => j.TicketReference == ticketReference);
-
-        //    if (journey == null)
-        //        return NotFound();
-
-        //    // 1. Find routes the passenger HAS ALREADY scanned
-        //    var completedRouteIds = journey.Legs
-        //        .Where(l => l.RedeemedAt != null)
-        //        .Select(l => l.RouteId)
-        //        .ToList();
-
-        //    // 2. Find routes they HAVEN'T ridden yet
-        //    var upcomingRouteIds = journey.Legs
-        //        .Where(l => l.RedeemedAt == null)
-        //        .Select(l => l.RouteId)
-        //        .ToList();
-
-        //    var expirationWindow = DateTime.UtcNow.AddHours(-2);
-
-        //    // 3. Only check for delays on UPCOMING routes
-        //    var activeAlert = await _context.IncidentReports
-        //        .Include(i => i.ConductorShift)
-        //        .Where(i => upcomingRouteIds.Contains(i.ConductorShift.RouteId)
-        //                 && i.Status == IncidentStatus.Open
-        //                 && i.Category == IncidentCategory.Delay
-        //                 && i.ReportedAt >= expirationWindow)
-        //        .OrderByDescending(i => i.ReportedAt)
-        //        .Select(i => new
-        //        {
-        //            message = i.Description,
-        //            reportedAt = i.ReportedAt,
-        //            isEmergency = i.IsEmergency
-        //        })
-        //        .FirstOrDefaultAsync();
-
-        //    // 4. Return everything the Android app needs to manage its state
-        //    return Ok(new
-        //    {
-        //        hasDelay = activeAlert != null,
-        //        alert = activeAlert,
-        //        ticketStatus = journey.Status.ToString().ToUpper(), // "ACTIVE" or "COMPLETED"
-        //        completedRouteIds = completedRouteIds // <-- The unsubscription payload!
-        //    });
-        //}
 
         [HttpGet("tickets/{ticketReference}/status")]
         public async Task<IActionResult> GetTicketStatus(Guid ticketReference)
@@ -326,7 +273,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 .Select(l => l.RouteId)
                 .ToList();
 
-            var expirationWindow = DateTime.UtcNow.AddHours(-2);
+            var expirationWindow = DateTime.Now.AddHours(-2);
 
             // 3. Drill through Shift -> Bus to get the physical vehicle details
             var activeAlert = await _context.IncidentReports
@@ -394,7 +341,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // Optional: Automatically stamp the RedeemedAt time when it gets completed
             if (newStatus == JourneyStatus.Completed && journey.RedeemedAt == null)
             {
-                journey.RedeemedAt = DateTime.UtcNow;
+                journey.RedeemedAt = DateTime.Now;
             }
 
             await _context.SaveChangesAsync();
@@ -407,6 +354,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 newStatus = journey.Status.ToString()
             });
         }
+
         [HttpGet("revenue-over-time")]
         public async Task<IActionResult> GetRevenueOverTime([FromQuery] string timeframe = "30days")
         {
@@ -417,7 +365,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 _ => 30
             };
 
-            var cutoffDate = DateTime.UtcNow.AddDays(-days);
+            var cutoffDate = DateTime.Now.AddDays(-days);
 
             // Query journeys matching the timeframe
             var rawData = await _context.Journeys

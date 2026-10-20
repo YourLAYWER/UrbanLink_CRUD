@@ -31,7 +31,7 @@ namespace UrbanLink_CRUD.Services.Workers
                         var context = scope.ServiceProvider.GetRequiredService<ULDBContext>();
 
                         // 2. Define the cut-off time (24 hours ago)
-                        var expirationThreshold = DateTime.UtcNow.AddHours(-24);
+                        var expirationThreshold = DateTime.Now.AddHours(-24);
 
                         // 3. Bulk Update: Instantly change the status using the strong Enum
                         int expiredCount = await context.Journeys

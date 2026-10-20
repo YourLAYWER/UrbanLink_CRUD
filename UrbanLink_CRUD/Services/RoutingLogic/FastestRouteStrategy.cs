@@ -104,34 +104,36 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
             var node = nodes[target];
             int totalTime = node.Time;
 
-            var pathEdges = new List<GraphEdge>();
+            // Each edge paired with the time (minutes after the search time) at which it ends.
+            var path = new List<(GraphEdge Edge, int ArrivalTime)>();
             while (node.Edge is not null)
             {
-                pathEdges.Add(node.Edge);
+                path.Add((node.Edge, node.Time));
                 node = nodes[node.Prev];
             }
-            pathEdges.Reverse();
+            path.Reverse();
 
             var legs = new List<JourneyLeg>();
-            if (pathEdges.Count == 0) return new RoutingResult(totalTime, legs);
+            if (path.Count == 0) return new RoutingResult(totalTime, legs);
 
-            var current = NewLeg(pathEdges[0]);
-            int currentLine = pathEdges[0].LineKey;
+            var current = NewLeg(path[0].Edge, path[0].ArrivalTime);
+            int currentLine = path[0].Edge.LineKey;
 
-            for (int i = 1; i < pathEdges.Count; i++)
+            for (int i = 1; i < path.Count; i++)
             {
-                var edge = pathEdges[i];
+                var (edge, arrival) = path[i];
 
                 // Compare lines, not route ids, so an out-and-back isn't merged into one leg.
                 if (edge.LineKey == currentLine)
                 {
                     current.EndStopId = edge.DestinationStopId;
                     current.LegDurationMinutes += edge.TravelTimeMinutes;
+                    current.ArrivalOffsetMinutes = arrival;
                 }
                 else
                 {
                     legs.Add(current);
-                    current = NewLeg(edge);
+                    current = NewLeg(edge, arrival);
                     currentLine = edge.LineKey;
                 }
             }
@@ -140,14 +142,18 @@ namespace UrbanLink_CRUD.Services.RoutingLogic
             return new RoutingResult(totalTime, legs);
         }
 
-        private static JourneyLeg NewLeg(GraphEdge edge) => new()
+        private static JourneyLeg NewLeg(GraphEdge edge, int arrivalTime) => new()
         {
             RouteId = edge.RouteId,
             Direction = edge.Direction,
             StartStopId = edge.OriginStopId,
             EndStopId = edge.DestinationStopId,
             LegDurationMinutes = edge.TravelTimeMinutes,
-            LegFare = edge.RouteBaseFare
+            LegFare = edge.RouteBaseFare,
+            // The vehicle leaves the origin exactly TravelTime before it reaches the destination,
+            // so boarding time = arrival - travel (this already includes buffer and wait).
+            DepartureOffsetMinutes = arrivalTime - edge.TravelTimeMinutes,
+            ArrivalOffsetMinutes = arrivalTime
         };
 
 
