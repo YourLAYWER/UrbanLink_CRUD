@@ -19,13 +19,35 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
         // GET: api/RouteSegments
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RouteSegment>>> GetRouteSegments()
+        public async Task<IActionResult> GetRouteSegments()
         {
-            return await _context.RouteSegments
-                .Include(rs => rs.RouteStops)
-                .ThenInclude(rs => rs.Stop)
+            var segments = await _context.RouteSegments
                 .AsNoTracking()
+                .Select(rs => new
+                {
+                    rs.Id,
+                    rs.RouteId,
+                    routeName = rs.Route != null ? rs.Route.RouteName : null,
+                    rs.OriginStopId,
+                    originStopName = rs.OriginStop != null ? rs.OriginStop.Name : null,
+                    rs.DestinationStopId,
+                    destinationStopName = rs.DestinationStop != null ? rs.DestinationStop.Name : null,
+                    rs.TravelTimeMinutes,
+
+                    // Kept so any screen that already reads routeStops keeps working
+                    routeStops = rs.RouteStops
+                        .OrderBy(x => x.StopSequence)
+                        .Select(x => new
+                        {
+                            x.SegmentId,
+                            x.StopId,
+                            x.StopSequence,
+                            stop = x.Stop == null ? null : new { x.Stop.Id, x.Stop.Name }
+                        })
+                })
                 .ToListAsync();
+
+            return Ok(segments);
         }
 
         // GET: api/RouteSegments/5
@@ -52,6 +74,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
+            if (segment.OriginStopId == segment.DestinationStopId)
+                return BadRequest(new { message = "Origin and destination must be different." });
+
+            if (segment.TravelTimeMinutes <= 0)
+                return BadRequest(new { message = "Travel time must be more than 0 minutes." });
+
             _context.RouteSegments.Add(segment);
             await _context.SaveChangesAsync();
 
@@ -59,6 +87,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         }
 
         // PUT: api/RouteSegments/5
+        // Copies only the editable fields onto the saved segment, so nothing
+        // else on the row can be overwritten with empty values.
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateRouteSegment(int id, [FromBody] RouteSegment segment)
@@ -68,7 +98,19 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 return BadRequest(new { message = "ID mismatch." });
             }
 
-            _context.Entry(segment).State = EntityState.Modified;
+            if (segment.OriginStopId == segment.DestinationStopId)
+                return BadRequest(new { message = "Origin and destination must be different." });
+
+            if (segment.TravelTimeMinutes <= 0)
+                return BadRequest(new { message = "Travel time must be more than 0 minutes." });
+
+            var existing = await _context.RouteSegments.FindAsync(id);
+            if (existing == null) return NotFound();
+
+            existing.OriginStopId = segment.OriginStopId;
+            existing.DestinationStopId = segment.DestinationStopId;
+            existing.RouteId = segment.RouteId;
+            existing.TravelTimeMinutes = segment.TravelTimeMinutes;
 
             try
             {
@@ -84,6 +126,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         }
 
         // DELETE: api/RouteSegments/5
+        // Removes the segment's stops first, so the delete does not fail
+        // on the foreign key from RouteStops to RouteSegments.
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteRouteSegment(int id)
@@ -91,8 +135,18 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             var segment = await _context.RouteSegments.FindAsync(id);
             if (segment == null) return NotFound();
 
+            // Delete the stops by the SegmentId column itself, then the segment,
+            // in one transaction so nothing is left half-deleted.
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            await _context.RouteStops
+                .Where(rs => rs.SegmentId == id)
+                .ExecuteDeleteAsync();
+
             _context.RouteSegments.Remove(segment);
             await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
 
             return NoContent();
         }
