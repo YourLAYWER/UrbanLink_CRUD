@@ -94,7 +94,7 @@ namespace UrbanLink_CRUD.Models.Data
 
         //public static void SeedBuses(ULDBContext context)
         //{
-            
+
         //        var provider = context.TransitProviders.FirstOrDefault(p => p.Name == "Algoa Bus");
 
         //        if (provider != null)
@@ -154,7 +154,7 @@ namespace UrbanLink_CRUD.Models.Data
                 new Stop { Name = "Post Office Stop", Latitude = -33.954781, Longitude = 25.613274, IsTransferHub = false, IsActive = true },
                 new Stop { Name = "Hartman Stop", Latitude = -33.956828, Longitude = 25.617586, IsTransferHub = false, IsActive = true },
                 new Stop { Name = "Bongo Stop", Latitude = -33.957280, Longitude = 25.618224, IsTransferHub = false, IsActive = true },
-                new Stop { Name = "Goven Mbeki Stop", Latitude = -33.957693, Longitude = 25.618814, IsTransferHub = false, IsActive = true }, 
+                new Stop { Name = "Goven Mbeki Stop", Latitude = -33.957693, Longitude = 25.618814, IsTransferHub = false, IsActive = true },
                 new Stop { Name = "Harbour Stop", Latitude = -33.963109, Longitude = 25.626052, IsTransferHub = false, IsActive = true },
                 new Stop { Name = "Tramway Stop", Latitude = -33.965053, Longitude = 25.626133, IsTransferHub = false, IsActive = true },
                 new Stop { Name = "Uitenhage Train Station", Latitude = -33.770963, Longitude = 25.409130, IsTransferHub = false, IsActive = true },  // Route 4: Uitenhage station to Gqeberha Train Station
@@ -319,7 +319,7 @@ namespace UrbanLink_CRUD.Models.Data
             LinkRouteStops(context, routes[3].Id, new[] { stops[19], stops[20], stops[21], stops[22], stops[23], stops[24], stops[25], stops[26], stops[27], stops[28] }, segments, routeStops);
             LinkRouteStops(context, routes[4].Id, new[] { stops[29], stops[30], stops[31], stops[32] }, segments, routeStops);
 
-           // context.RouteSegments.AddRange(segments);
+            // context.RouteSegments.AddRange(segments);
             context.RouteStops.AddRange(routeStops);
             context.SaveChanges();
         }
@@ -346,7 +346,7 @@ namespace UrbanLink_CRUD.Models.Data
 
                     currentSegmentId = newSegment.Id;
 
-                    // ADD THIS LINE: Track the segment so the final stop can find its ID
+                    // Track the segment so the final stop can find its ID
                     segmentList.Add(newSegment);
                 }
                 else
@@ -365,6 +365,7 @@ namespace UrbanLink_CRUD.Models.Data
                 });
             }
         }
+
         public static void SeedMockJourneys(ULDBContext context)
         {
             Console.WriteLine("[Seeder] Checking if journeys already exist...");
@@ -444,6 +445,56 @@ namespace UrbanLink_CRUD.Models.Data
             context.SaveChanges();
             Console.WriteLine($"[Seeder] Successfully saved {journeysToSeed.Count} mock journeys with legs to the database!");
         }
+
+        // NEW: creates a Ticket row for every journey that doesn't have one yet.
+        // Runs on every startup and is safe to repeat (it skips QR codes that already have a ticket),
+        // so it also fixes databases that already have journeys but no tickets.
+        public static void SeedTickets(ULDBContext context)
+        {
+            var existing = context.Tickets
+                .Select(t => t.QRCodeData)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var journeys = context.Journeys
+                .Include(j => j.Legs)
+                .ToList();
+
+            var newTickets = new List<Ticket>();
+
+            foreach (var j in journeys)
+            {
+                var qr = j.TicketReference.ToString();
+                if (existing.Contains(qr)) continue;
+
+                newTickets.Add(new Ticket
+                {
+                    QRCodeData = qr,
+                    Status = j.Status switch
+                    {
+                        JourneyStatus.Completed => TicketStatus.Used,
+                        JourneyStatus.Expired => TicketStatus.Expired,
+                        JourneyStatus.Cancelled => TicketStatus.Expired,
+                        _ => TicketStatus.Active
+                    },
+                    RouteId = j.Legs
+                        .OrderBy(l => l.SequenceOrder)
+                        .Select(l => (int?)l.RouteId)
+                        .FirstOrDefault(),
+                    PurchasedAt = j.CreatedAt
+                });
+            }
+
+            if (newTickets.Count == 0)
+            {
+                Console.WriteLine("[Seeder] Tickets already in sync with journeys.");
+                return;
+            }
+
+            context.Tickets.AddRange(newTickets);
+            context.SaveChanges();
+            Console.WriteLine($"[Seeder] Seeded {newTickets.Count} tickets from existing journeys.");
+        }
+
         public static void SeedBulkBuses(ULDBContext context)
         {
             // Only seed if we haven't already populated a large fleet
@@ -560,6 +611,7 @@ namespace UrbanLink_CRUD.Models.Data
             context.SaveChanges();
             Console.WriteLine($"[Seeder] Successfully seeded {usersToSeed.Count} client accounts!");
         }
+
         public static void SeedConductorShifts(ULDBContext context)
         {
             // ==========================================
@@ -641,12 +693,12 @@ namespace UrbanLink_CRUD.Models.Data
             // Define all 5 route names
             var routeNames = new[]
             {
-        "Route 1: Greenacres to Central",
-        "Route 2: Central to NMU South",
-        "Route 3: Sydenhem to Gqeberha CBD",
-        "Route 4: Uitenhage station to Gqeberha Train Station",
-        "Route 5: Kempston Rd to Greenacres"
-    };
+                "Route 1: Greenacres to Central",
+                "Route 2: Central to NMU South",
+                "Route 3: Sydenhem to Gqeberha CBD",
+                "Route 4: Uitenhage station to Gqeberha Train Station",
+                "Route 5: Kempston Rd to Greenacres"
+            };
 
             // Ensure all 5 routes exist in the database (auto-create placeholders if SeedTransitSystem hasn't made them yet)
             foreach (var rName in routeNames)

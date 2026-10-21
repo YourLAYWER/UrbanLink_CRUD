@@ -162,8 +162,8 @@ using (var scope = app.Services.CreateScope())
         DbInitializer.SeedBulkBuses(context);
         DbInitializer.SeedBulkClients(context);
         DbInitializer.SeedMockJourneys(context);
+        DbInitializer.SeedTickets(context);          // <- new: one Ticket per journey that lacks one
         DbInitializer.SeedConductorShifts(context);
-
         var routingService = services.GetRequiredService<ITransitRoutingService>();
 
         // Reusing the existing 'logger' variable instead of redeclaring it
