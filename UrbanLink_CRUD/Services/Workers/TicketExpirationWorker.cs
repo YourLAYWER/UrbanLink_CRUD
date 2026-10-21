@@ -1,5 +1,4 @@
-﻿
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using UrbanLink_CRUD.Models.Data;
 using UrbanLink_CRUD.Models.Enums;
 
@@ -20,37 +19,57 @@ namespace UrbanLink_CRUD.Services.Workers
         {
             _logger.LogInformation("Ticket Expiration Worker started.");
 
-            // Keep running until the application shuts down
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    // 1. Create a fresh scope to safely inject the DbContext
                     using (var scope = _serviceProvider.CreateScope())
                     {
                         var context = scope.ServiceProvider.GetRequiredService<ULDBContext>();
 
-                        // 2. Define the cut-off time (24 hours ago)
+                        // Cut-off time (24 hours ago). Journeys are stored in local time by BookJourney.
                         var expirationThreshold = DateTime.Now.AddHours(-24);
 
-                        // 3. Bulk Update: Instantly change the status using the strong Enum
-                        int expiredCount = await context.Journeys
+                        // 1. Find the ticket references of journeys that are due to expire
+                        var dueRefs = await context.Journeys
                             .Where(j => j.Status == JourneyStatus.Active && j.CreatedAt < expirationThreshold)
-                            .ExecuteUpdateAsync(s => s.SetProperty(j => j.Status, JourneyStatus.Expired), stoppingToken);
+                            .Select(j => j.TicketReference.ToString())
+                            .ToListAsync(stoppingToken);
 
-                        if (expiredCount > 0)
+                        if (dueRefs.Count > 0)
                         {
-                            _logger.LogInformation($"Auto-expired {expiredCount} unused tickets.");
+                            await using var tx = await context.Database.BeginTransactionAsync(stoppingToken);
+
+                            // 2. Expire the matching Ticket rows (the admin Expired tab reads these)
+                            int ticketsExpired = await context.Tickets
+                                .Where(t => t.Status == TicketStatus.Active && dueRefs.Contains(t.QRCodeData))
+                                .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TicketStatus.Expired), stoppingToken);
+
+                            // 3. Expire the journeys themselves
+                            int journeysExpired = await context.Journeys
+                                .Where(j => j.Status == JourneyStatus.Active && j.CreatedAt < expirationThreshold)
+                                .ExecuteUpdateAsync(s => s.SetProperty(j => j.Status, JourneyStatus.Expired), stoppingToken);
+
+                            await tx.CommitAsync(stoppingToken);
+
+                            _logger.LogInformation(
+                                "Auto-expired {Journeys} journeys and {Tickets} tickets.",
+                                journeysExpired, ticketsExpired);
                         }
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    break; // app is shutting down
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "A fatal error occurred while processing ticket expirations.");
                 }
 
-                // 4. Pause the loop for 1 hour before checking again
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                // Pause the loop for 1 hour before checking again
+                try { await Task.Delay(TimeSpan.FromHours(1), stoppingToken); }
+                catch (OperationCanceledException) { break; }
             }
         }
     }
