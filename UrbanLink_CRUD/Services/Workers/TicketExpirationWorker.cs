@@ -28,7 +28,7 @@ namespace UrbanLink_CRUD.Services.Workers
                         var context = scope.ServiceProvider.GetRequiredService<ULDBContext>();
 
                         // Cut-off time (24 hours ago). Journeys are stored in local time by BookJourney.
-                        var expirationThreshold = DateTime.Now.AddHours(-24);
+                        var expirationThreshold = DateTime.Now.AddMinutes(-90);
 
                         // 1. Find the ticket references of journeys that are due to expire
                         var dueRefs = await context.Journeys
@@ -68,7 +68,7 @@ namespace UrbanLink_CRUD.Services.Workers
                 }
 
                 // Pause the loop for 1 hour before checking again
-                try { await Task.Delay(TimeSpan.FromHours(1), stoppingToken); }
+                try { await Task.Delay(TimeSpan.FromMinutes(20), stoppingToken); }
                 catch (OperationCanceledException) { break; }
             }
         }
