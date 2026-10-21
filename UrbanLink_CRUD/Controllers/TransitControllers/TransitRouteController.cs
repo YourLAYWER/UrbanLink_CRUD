@@ -110,6 +110,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 baseFare = route.BaseFare,
                 providerId = route.ProviderId,
                 providerName = route.Provider != null ? route.Provider.Name : null,
+                isBidirectional = route.IsBidirectional,
+                routeMapPath = route.RouteMapPath,
                 schedules = route.Schedules.Select(s => new
                 {
                     scheduleId = s.ScheduleId,
@@ -149,7 +151,9 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 RouteName = request.RouteName.Trim(),
                 TransportType = request.TransportType,
                 BaseFare = request.BaseFare,
-                ProviderId = request.ProviderId
+                ProviderId = request.ProviderId,
+                IsBidirectional = request.IsBidirectional,
+                RouteMapPath = request.RouteMapPath?.Trim() ?? string.Empty
             };
 
             _context.TransitRoutes.Add(route);
@@ -173,6 +177,14 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             route.TransportType = request.TransportType;
             route.BaseFare = request.BaseFare;
             route.ProviderId = request.ProviderId;
+
+            // Only change these when the request actually sends them,
+            // so an older client cannot erase the saved values.
+            if (request.IsBidirectional.HasValue)
+                route.IsBidirectional = request.IsBidirectional.Value;
+
+            if (request.RouteMapPath != null)
+                route.RouteMapPath = request.RouteMapPath.Trim();
 
             await _context.SaveChangesAsync();
             return NoContent();

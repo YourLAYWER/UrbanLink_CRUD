@@ -15,5 +15,10 @@ namespace UrbanLink_CRUD.Models.Dtos.Transit
         public decimal BaseFare { get; set; }
 
         public int ProviderId { get; set; }
+
+        // Nullable: a request that leaves these out will not erase the saved values
+        public bool? IsBidirectional { get; set; }
+
+        public string? RouteMapPath { get; set; }
     }
 }

@@ -8,7 +8,6 @@ namespace UrbanLink_CRUD.Models.Dtos.Transit
         [Required, StringLength(100, MinimumLength = 1)]
         public string RouteName { get; set; } = string.Empty;
 
-        // Rejects numbers that aren't a defined TransitType value
         [EnumDataType(typeof(TransitType))]
         public TransitType TransportType { get; set; }
 
@@ -16,5 +15,9 @@ namespace UrbanLink_CRUD.Models.Dtos.Transit
         public decimal BaseFare { get; set; }
 
         public int ProviderId { get; set; }
+
+        public bool IsBidirectional { get; set; } = false;
+
+        public string? RouteMapPath { get; set; }
     }
 }
