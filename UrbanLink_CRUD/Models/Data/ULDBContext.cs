@@ -21,10 +21,10 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<Entities.Transit.TransitRoute> TransitRoutes { get; set; } = null!;
         public DbSet<Entities.Transit.RouteStop> RouteStops { get; set; } = null!;
         public DbSet<Entities.Transit.JourneyLeg> JourneyLegs { get; set; } = null!;
-        public DbSet<TripDestination> TripDestinations { get; set; }
-        public DbSet<Card> Cards { get; set; }
-        public DbSet<TransitCard> TransitCards { get; set; }
-        public DbSet<UserProvider> UserProviders { get; set; }
+        public DbSet<TripDestination> TripDestinations { get; set; } = null!;
+        public DbSet<Card> Cards { get; set; } = null!;
+        public DbSet<TransitCard> TransitCards { get; set; } = null!;
+        public DbSet<UserProvider> UserProviders { get; set; } = null!;
 
         // NEW: Journey TPT DbSets
         public DbSet<Entities.Transit.Journey> Journeys { get; set; } = null!;
