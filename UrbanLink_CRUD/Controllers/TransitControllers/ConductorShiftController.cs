@@ -336,7 +336,10 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int conductorId))
                 return Unauthorized(new { message = "Invalid token or user ID." });
 
-            // 2. Automatically find the active shift for this specific conductor on the backend
+            if (request.PassengerCount <= 0)
+                return BadRequest(new { message = "Passenger count must be at least 1." });
+
+            // 2. Find the active shift for this conductor
             var shift = await _context.ConductorShifts
                 .Include(s => s.Route)
                 .FirstOrDefaultAsync(s => s.ConductorId == conductorId && s.ShiftEndTime == null);
@@ -344,31 +347,37 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (shift == null)
                 return BadRequest(new { message = "Invalid or closed shift. No active shift found." });
 
-            // 3. Find the Terminal (Last) Stop of this specific Route
+            // 3. Find the terminal (last) stop of this route
             var terminalSegment = await _context.RouteSegments
                 .FirstOrDefaultAsync(rs => rs.RouteId == shift.RouteId &&
                     !_context.RouteSegments.Any(other => other.RouteId == shift.RouteId && other.OriginStopId == rs.DestinationStopId));
 
             if (terminalSegment == null)
-                return BadRequest(new { message = "Route configuration error: Cannot determine terminal stop." });
+                return BadRequest(new { message = $"Route configuration error: route {shift.RouteId} has no terminal stop. Check its segments." });
 
             int endStopId = terminalSegment.DestinationStopId;
 
-            // 4. Calculate Fares
+            // 4. Fares
             decimal fareTotal = shift.Route.BaseFare * request.PassengerCount;
             shift.TotalCashCollected += fareTotal;
 
             var issuedTickets = new List<PrintedTicketDto>();
+            var now = DateTime.Now;
 
-            // 5. Issue the tickets for the waist printer
+            // 5. One cash journey and one Ticket row per passenger
             for (int i = 0; i < request.PassengerCount; i++)
             {
                 var walkOnJourney = _journeyFactory.CreateCashJourney(shift.Id, shift.Route.BaseFare, endStopId);
-
-                // ==========================================
-                // CRITICAL FIX: Add the cash journey to the context
-                // ==========================================
                 _context.CashJourneys.Add(walkOnJourney);
+
+                // Ticket row so the admin ticket page and provider chart count cash sales too
+                _context.Tickets.Add(new Ticket
+                {
+                    QRCodeData = walkOnJourney.TicketReference.ToString(),
+                    Status = walkOnJourney.Status == JourneyStatus.Completed ? TicketStatus.Used : TicketStatus.Active,
+                    RouteId = shift.RouteId,
+                    PurchasedAt = now
+                });
 
                 string displayTicketId = $"CASH-{walkOnJourney.TicketReference.ToString().Substring(0, 8).ToUpper()}";
 
@@ -377,14 +386,22 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                     TicketId = displayTicketId,
                     RouteName = shift.Route.RouteName,
                     FarePaid = shift.Route.BaseFare,
-                    IssuedAt = walkOnJourney.RedeemedAt ?? DateTime.Now
+                    IssuedAt = walkOnJourney.RedeemedAt ?? now
                 });
             }
 
-            _context.ConductorShifts.Update(shift);
-            await _context.SaveChangesAsync(); // This will now commit both the shift update and all generated cash journeys!
+            // 6. One save: shift total, cash journeys and tickets together
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                Console.WriteLine($"[CashSale] Save failed: {ex.InnerException?.Message ?? ex.Message}");
+                return StatusCode(500, new { message = "Could not save the cash sale. Check the API console for the reason." });
+            }
 
-            // 6. Build the active queue using RouteStop sequence numbers and Stop names
+            // 7. Active queue (unchanged)
             var activeQueue = await _context.RouteStops
                 .Where(rs => rs.RouteSegment.RouteId == shift.RouteId)
                 .Join(_context.Stops,
@@ -404,7 +421,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 .OrderBy(q => q.SequenceNumber)
                 .ToListAsync();
 
-            // 7. Broadcast real-time queue update to the driver via SignalR
+            // 8. Real-time queue update to the driver
             await _hubContext.Clients.Group($"bus_{shift.BusId}")
                 .SendAsync("QueueUpdated", System.Text.Json.JsonSerializer.Serialize(activeQueue));
 
