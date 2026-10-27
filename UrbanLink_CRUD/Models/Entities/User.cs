@@ -14,6 +14,8 @@ namespace UrbanLink_CRUD.Models.Entities
         // CommuterProfile can be (e.g ...,"Standard", "Student", or "Pensioner")
         public Role Role { get; set; } = Role.StandardUser;
 
+        public bool IsActive {get ; set ;} = true;
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // ==========================================

@@ -7,6 +7,7 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public TransitType Type { get; set; }// e.g., "Bus", "Train", "Tram"
+        public bool IsActive {get ; set;} = true;
         public string APIEndpoint { get; set; } = string.Empty; // Endpoint for fetching transit data
 
 
