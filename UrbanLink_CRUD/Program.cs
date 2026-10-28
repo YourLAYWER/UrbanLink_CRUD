@@ -14,6 +14,7 @@ using UrbanLink_CRUD.Models.Domain.Incident.FireBase;
 using UrbanLink_CRUD.Models.Domain.Journey;
 using UrbanLink_CRUD.Services.RoutingLogic;
 using UrbanLink_CRUD.Services.Workers;
+using UrbanLink_CRUD.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -101,6 +102,9 @@ builder.Services.AddSwaggerGen(c =>
 // Database Context
 builder.Services.AddDbContext<ULDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
+
+// Register the Card Repository
+builder.Services.AddScoped<ICardRepository, CardRepository>();
 
 // Dependency Injection Registrations
 builder.Services.AddScoped<IFareStrategyFactory, FareStrategyFactory>();
