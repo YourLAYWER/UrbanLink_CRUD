@@ -10,6 +10,7 @@ using UrbanLink_CRUD.Models.Dtos.TransitDtos;
 using UrbanLink_CRUD.Models.Entities.Transit;
 using UrbanLink_CRUD.Models.Enums;
 using UrbanLink_CRUD.Services.RoutingLogic;
+using UrbanLink_CRUD.Models.Domain.Payment;
 using RoutingContext = UrbanLink_CRUD.Services.RoutingLogic.RoutingContext;
 
 namespace UrbanLink_CRUD.Controllers.TransitControllers
@@ -23,14 +24,22 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         private readonly IFareStrategyFactory _fareFactory;
         private readonly IRoutingStrategyFactory _routingFactory;
         private readonly IJourneyFactory _journeyFactory;
+        private readonly IPaymentStrategyFactory _paymentFactory;
 
-        public JourneyController(ULDBContext context, ITransitRoutingService routingService, IFareStrategyFactory fareFactory, IRoutingStrategyFactory routingFactory, IJourneyFactory journeyFactory)
+        public JourneyController(
+            ULDBContext context,
+            ITransitRoutingService routingService,
+            IFareStrategyFactory fareFactory,
+            IRoutingStrategyFactory routingFactory,
+            IJourneyFactory journeyFactory,
+            IPaymentStrategyFactory paymentStrategy)
         {
             _context = context;
             _routingService = routingService;
             _fareFactory = fareFactory;
             _routingFactory = routingFactory;
             _journeyFactory = journeyFactory;
+            _paymentFactory = paymentStrategy;
         }
 
         [HttpGet]
@@ -180,10 +189,11 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             var preference = "fastest";
             _routingFactory.GetStrategy(preference);
 
-            // TEMPORARY for testing: fixed 09:00. Swap back to DateTime.Now once routing works.
-            //var now = RoundUpToMinute(DateTime.Today.AddHours(9));
+
             // NOTE: DateTime.Now is server-local time; on a UTC host, convert to the agency's time zone.
             var now = RoundUpToMinute(DateTime.Now);
+            // TEMPORARY for testing: fixed 09:00. Swap back to DateTime.Now once routing works.
+            //var now = RoundUpToMinute(DateTime.Today.AddHours(9));
 
             var routingResult = _routingService.ComputeRoute(
                 startStopId: request.StartStopId,
@@ -203,6 +213,28 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             var fareContext = new FareCalculationContext(trueBaseCost, now, userProfile);
             decimal secureFinalFare = _fareFactory.GetStrategy(fareContext).CalculateFare(fareContext);
 
+            // ==========================================
+            // 2. EXECUTE PAYMENT STRATEGY
+            // ==========================================
+            var paymentContext = new PaymentContext(userId, secureFinalFare, request.CardId);
+
+            try
+            {
+                var paymentStrategy = _paymentFactory.GetStrategy(request.PaymentMethod);
+                var paymentResult = await paymentStrategy.ProcessPaymentAsync(paymentContext);
+
+                if (!paymentResult.IsSuccess)
+                {
+                    return BadRequest(new { message = paymentResult.ErrorMessage });
+                }
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            // ==========================================
+
+            // 3. Generate Journey & Tickets
             var estimatedArrival = now.AddMinutes(routingResult.TotalTimeMinutes);
 
             var userJourney = _journeyFactory.CreateUserJourney(

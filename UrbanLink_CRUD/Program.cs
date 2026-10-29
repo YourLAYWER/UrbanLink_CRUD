@@ -12,6 +12,7 @@ using UrbanLink_CRUD.Models.Domain.Fare;
 using UrbanLink_CRUD.Models.Domain.Incident;
 using UrbanLink_CRUD.Models.Domain.Incident.FireBase;
 using UrbanLink_CRUD.Models.Domain.Journey;
+using UrbanLink_CRUD.Models.Domain.Payment;
 using UrbanLink_CRUD.Services.RoutingLogic;
 using UrbanLink_CRUD.Services.Workers;
 using UrbanLink_CRUD.Repositories;
@@ -111,6 +112,13 @@ builder.Services.AddScoped<IFareStrategyFactory, FareStrategyFactory>();
 builder.Services.AddSingleton<IRoutingStrategyFactory, RoutingStrategyFactory>();
 builder.Services.AddSingleton<ITransitRoutingService, TransitRoutingService>();
 builder.Services.AddSingleton<IJourneyFactory, JourneyFactory>();
+
+// Register the specific payment strategies
+builder.Services.AddScoped<ProviderWalletPaymentStrategy>();
+builder.Services.AddScoped<BankCardPaymentStrategy>();
+
+// Register the factory so the Controller can resolve it
+builder.Services.AddScoped<IPaymentStrategyFactory, PaymentStrategyFactory>();
 
 // Incident Strategies
 builder.Services.AddScoped<IIncidentStrategy, DelayIncidentStrategy>();
