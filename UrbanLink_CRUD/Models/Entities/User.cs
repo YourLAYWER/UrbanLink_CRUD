@@ -1,8 +1,11 @@
 ﻿using System.Data;
+using Microsoft.EntityFrameworkCore;
 using UrbanLink_CRUD.Models.Enums;
 
 namespace UrbanLink_CRUD.Models.Entities
 {
+    [Index(nameof(Email), IsUnique = true)]
+    [Index(nameof(Role), nameof(IsActive), Name = "IX_Users_Role_IsActive")]
     public class User
     {
         public int Id { get; set; }
@@ -14,7 +17,7 @@ namespace UrbanLink_CRUD.Models.Entities
         // CommuterProfile can be (e.g ...,"Standard", "Student", or "Pensioner")
         public Role Role { get; set; } = Role.StandardUser;
 
-        public bool IsActive {get ; set ;} = true;
+        public bool IsActive { get; set; } = true;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

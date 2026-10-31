@@ -1,7 +1,8 @@
-﻿using Microsoft.Identity.Client;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace UrbanLink_CRUD.Models.Entities.Transit
 {
+    [Index(nameof(ConductorId), nameof(ShiftEndTime), Name = "IX_ConductorShifts_ConductorId_ShiftEndTime")]
     public class ConductorShift
     {
         public int Id { get; set; }

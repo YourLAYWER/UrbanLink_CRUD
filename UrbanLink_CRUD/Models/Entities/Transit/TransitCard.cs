@@ -1,5 +1,8 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace UrbanLink_CRUD.Models.Entities.Transit
 {
+    [Index(nameof(OperatorCardNumber), IsUnique = true)]
     public class TransitCard
     {
         public int Id { get; set; }
@@ -15,7 +18,7 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
         public string OperatorCardNumber { get; set; } = string.Empty; // Unique serial number on the physical transit card
         public decimal Balance { get; set; } = 0.00m; // Credit balance held on the provider card
         public bool IsActive { get; set; } = true;
-        
+
         public DateTime IssuedAt { get; set; } = DateTime.UtcNow;
     }
 }

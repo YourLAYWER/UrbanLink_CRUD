@@ -1,8 +1,10 @@
-﻿using Microsoft.Extensions.Configuration.UserSecrets;
+﻿using Microsoft.EntityFrameworkCore;
 using UrbanLink_CRUD.Models.Enums;
 
 namespace UrbanLink_CRUD.Models.Entities.Transit
 {
+    [Index(nameof(TicketReference), IsUnique = true)]
+    [Index(nameof(Status), nameof(EndStopID), Name = "IX_Journeys_Status_EndStopID")]
     public class Journey
     {
         public int JourneyID { get; set; }

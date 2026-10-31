@@ -240,7 +240,10 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "IsDefault", "IsActive")
+                        .HasDatabaseName("IX_Cards_UserId_IsDefault_IsActive");
+
+                    b.HasIndex(new[] { "UserId", "IsDefault", "IsActive" }, "IX_Cards_User_Default_Active");
 
                     b.ToTable("Cards");
                 });
@@ -346,9 +349,9 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.HasIndex("BusId1");
 
-                    b.HasIndex("ConductorId");
-
                     b.HasIndex("RouteId");
+
+                    b.HasIndex(new[] { "ConductorId", "ShiftEndTime" }, "IX_ConductorShifts_ConductorId_ShiftEndTime");
 
                     b.ToTable("ConductorShifts");
                 });
@@ -454,7 +457,7 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<Guid>("TicketReference")
                         .HasColumnType("uniqueidentifier");
@@ -466,6 +469,11 @@ namespace UrbanLink_CRUD.Migrations
                     b.HasKey("JourneyID");
 
                     b.HasIndex("EndStopID");
+
+                    b.HasIndex("TicketReference")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "Status", "EndStopID" }, "IX_Journeys_Status_EndStopID");
 
                     b.ToTable("Journeys", (string)null);
 
@@ -682,6 +690,7 @@ namespace UrbanLink_CRUD.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Balance")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("CardId")
@@ -695,7 +704,7 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.Property<string>("OperatorCardNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("ProviderId")
                         .HasColumnType("int");
@@ -703,6 +712,10 @@ namespace UrbanLink_CRUD.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CardId");
+
+                    b.HasIndex("OperatorCardNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_TransitCards_OperatorCardNumber");
 
                     b.HasIndex("ProviderId");
 
@@ -823,7 +836,9 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.HasIndex("ProviderId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "ProviderId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserProviders_UserId_ProviderId");
 
                     b.ToTable("UserProviders");
                 });
@@ -841,7 +856,7 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -862,9 +877,14 @@ namespace UrbanLink_CRUD.Migrations
 
                     b.Property<string>("Role")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "Role", "IsActive" }, "IX_Users_Role_IsActive");
 
                     b.ToTable("Users");
                 });
@@ -985,7 +1005,7 @@ namespace UrbanLink_CRUD.Migrations
                     b.HasOne("UrbanLink_CRUD.Models.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -1187,13 +1207,13 @@ namespace UrbanLink_CRUD.Migrations
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Card", "Card")
                         .WithMany("TransitCards")
                         .HasForeignKey("CardId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.TransitProvider", "Provider")
                         .WithMany()
                         .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Card");
@@ -1228,13 +1248,13 @@ namespace UrbanLink_CRUD.Migrations
                     b.HasOne("UrbanLink_CRUD.Models.Entities.Transit.TransitProvider", "Provider")
                         .WithMany()
                         .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("UrbanLink_CRUD.Models.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Provider");

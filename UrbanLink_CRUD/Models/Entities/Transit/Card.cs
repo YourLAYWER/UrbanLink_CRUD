@@ -1,11 +1,13 @@
 using UrbanLink_CRUD.Models.Entities.Transit;
+using Microsoft.EntityFrameworkCore;
 
 namespace UrbanLink_CRUD.Models.Entities
 {
+    [Index(nameof(UserId), nameof(IsDefault), nameof(IsActive), Name = "IX_Cards_User_Default_Active")]
     public class Card
     {
         public int Id { get; set; }
-        
+
         // Foreign Key to User
         public int UserId { get; set; }
         public virtual User User { get; set; } = null!;
@@ -13,10 +15,10 @@ namespace UrbanLink_CRUD.Models.Entities
         public string CardHolderName { get; set; } = string.Empty;
         public string MaskedCardNumber { get; set; } = string.Empty; // e.g., "**** **** **** 1234"
         public string ExpiryDate { get; set; } = string.Empty; // e.g., "MM/YY"
-        
+
         public bool IsDefault { get; set; } = false;
         public bool IsActive { get; set; } = true; // Soft deactivation support
-        
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // Navigation property for provider-specific card linkages (if applicable)

@@ -17,7 +17,7 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<Entities.Transit.Stop> Stops { get; set; } = null!;
         public DbSet<Entities.Transit.RouteSegment> RouteSegments { get; set; } = null!;
         public DbSet<Entities.Transit.TransitProvider> TransitProviders { get; set; } = null!;
-        public DbSet<Entities.Transit.Incident> Incidents { get; set; } = null!;  
+        public DbSet<Entities.Transit.Incident> Incidents { get; set; } = null!;
         public DbSet<Entities.Transit.TransitRoute> TransitRoutes { get; set; } = null!;
         public DbSet<Entities.Transit.RouteStop> RouteStops { get; set; } = null!;
         public DbSet<Entities.Transit.JourneyLeg> JourneyLegs { get; set; } = null!;
@@ -188,6 +188,85 @@ namespace UrbanLink_CRUD.Models.Data
 
             modelBuilder.Entity<TransitRoute>()
                 .ToTable("TransitRoute");
+
+            // ----------------------------------------------------
+            // NEW: CARDS & PROVIDER MAPPING CONFIGURATION
+            // ----------------------------------------------------
+
+            // Card configuration
+            modelBuilder.Entity<Card>(entity =>
+            {
+                entity.HasOne(c => c.User)
+                      .WithMany()
+                      .HasForeignKey(c => c.UserId)
+                      .OnDelete(DeleteBehavior.Restrict); // Prevent deleting user from wiping card records silently
+
+                // Optional: Composite index if not added via [Index] attribute on the Card class
+                entity.HasIndex(c => new { c.UserId, c.IsDefault, c.IsActive })
+                      .HasDatabaseName("IX_Cards_UserId_IsDefault_IsActive");
+            });
+
+            // TransitCard configuration (Operator-specific balance)
+            modelBuilder.Entity<TransitCard>(entity =>
+            {
+                entity.Property(tc => tc.Balance)
+                      .HasPrecision(18, 2);
+
+                entity.HasOne(tc => tc.Card)
+                      .WithMany(c => c.TransitCards)
+                      .HasForeignKey(tc => tc.CardId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(tc => tc.Provider)
+                      .WithMany()
+                      .HasForeignKey(tc => tc.ProviderId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // Optional: Unique index if not added via [Index] attribute on the TransitCard class
+                entity.HasIndex(tc => tc.OperatorCardNumber)
+                      .IsUnique()
+                      .HasDatabaseName("IX_TransitCards_OperatorCardNumber");
+            });
+
+            // UserProvider configuration (Multi-tenant staff mapping)
+            modelBuilder.Entity<UserProvider>(entity =>
+            {
+                entity.HasOne(up => up.User)
+                      .WithMany()
+                      .HasForeignKey(up => up.UserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(up => up.Provider)
+                      .WithMany()
+                      .HasForeignKey(up => up.ProviderId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // Composite index to prevent assigning the same user to the same provider twice
+                entity.HasIndex(up => new { up.UserId, up.ProviderId })
+                      .IsUnique()
+                      .HasDatabaseName("IX_UserProviders_UserId_ProviderId");
+            });
+
+            // ----------------------------------------------------
+            // OPTIONAL: FLUENT PERFORMANCE INDEXES 
+            // (Only add these if you did NOT put [Index] on the entity classes)
+            // ----------------------------------------------------
+            // modelBuilder.Entity<User>()
+            //     .HasIndex(u => u.Email)
+            //     .IsUnique();
+
+            // modelBuilder.Entity<User>()
+            //     .HasIndex(u => new { u.Role, u.IsActive });
+
+            // modelBuilder.Entity<ConductorShift>()
+            //     .HasIndex(s => new { s.ConductorId, s.ShiftEndTime });
+
+            // modelBuilder.Entity<Journey>()
+            //     .HasIndex(j => j.TicketReference)
+            //     .IsUnique();
+
+            // modelBuilder.Entity<Journey>()
+            //     .HasIndex(j => new { j.Status, j.EndStopID });
         }
     }
 }
