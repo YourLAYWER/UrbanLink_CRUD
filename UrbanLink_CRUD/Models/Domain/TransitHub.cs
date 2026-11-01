@@ -2,6 +2,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.SignalR;
 using System.Threading.Tasks;
+using UrbanLink_CRUD.Models.Dtos.TransitDtos;
 
 namespace UrbanLink_CRUD.Models.Domain
 {
@@ -22,6 +23,43 @@ namespace UrbanLink_CRUD.Models.Domain
         {
             Console.WriteLine($"[SignalR] Connection disconnected: {Context.ConnectionId}");
             await base.OnDisconnectedAsync(exception);
+        }
+
+        // --- 2. SUBSCRIPTIONS (Called by Commuters & Admins) ---
+
+        // Commuter Android App calls this when viewing a specific route
+        public async Task JoinRouteGroup(int routeId)
+        {
+            string groupName = $"Route_{routeId}";
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+        }
+
+        // Commuter leaves the group when they exit the map screen
+        public async Task LeaveRouteGroup(int routeId)
+        {
+            string groupName = $"Route_{routeId}";
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+        }
+
+        // React Admin Dashboard calls this on load
+        public async Task JoinAdminDashboard()
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, "AdminDashboard");
+        }
+
+        // --- 2. PUBLISHING (Called by Driver Android App) ---
+
+        // Driver tablet calls this every 3 seconds
+        public async Task BroadcastBusLocation(BusLocationUpdateDto locationData)
+        {
+            // 1. Instantly fan-out to all commuters waiting on this specific route
+            string routeGroupName = $"Route_{locationData.RouteId}";
+            await Clients.Group(routeGroupName).SendAsync("ReceiveBusLocation", locationData);
+
+            // 2. Instantly fan-out to the global admin dashboard
+            await Clients.Group("AdminDashboard").SendAsync("ReceiveBusLocation", locationData);
+
+            // Note: Later, we will inject a Channel<T> here to queue this data for the SQL batcher!
         }
     }
 }
