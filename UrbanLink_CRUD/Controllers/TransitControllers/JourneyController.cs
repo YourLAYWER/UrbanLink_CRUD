@@ -232,9 +232,11 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+
+            // ==========================================
+            // GENERATE USER JOURNEY
             // ==========================================
 
-            // 3. Generate Journey & Tickets
             var estimatedArrival = now.AddMinutes(routingResult.TotalTimeMinutes);
 
             var userJourney = _journeyFactory.CreateUserJourney(
@@ -245,23 +247,10 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 estimatedArrival,
                 routingResult.Legs);
 
+            userJourney.ExpectedArrivalTime = estimatedArrival;
             _context.UserJourneys.Add(userJourney);
 
-            // ONE ticket per journey, attributed to the provider of the first leg.
-            var primaryRouteId = routingResult.Legs.First().RouteId;
-
-            _context.Tickets.Add(new Ticket
-            {
-                QRCodeData = userJourney.TicketReference.ToString(),
-                Status = TicketStatus.Active,
-                RouteId = primaryRouteId,
-                PurchasedAt = DateTime.Now
-            });
-
-            // Single save: journey and ticket succeed or fail together.
             await _context.SaveChangesAsync();
-
-
 
             var involvedRouteIds = routingResult.Legs
                 .Select(l => l.RouteId)

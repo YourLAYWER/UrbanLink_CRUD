@@ -368,16 +368,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             for (int i = 0; i < request.PassengerCount; i++)
             {
                 var walkOnJourney = _journeyFactory.CreateCashJourney(shift.Id, shift.Route.BaseFare, endStopId);
-                _context.CashJourneys.Add(walkOnJourney);
 
-                // Ticket row so the admin ticket page and provider chart count cash sales too
-                _context.Tickets.Add(new Ticket
-                {
-                    QRCodeData = walkOnJourney.TicketReference.ToString(),
-                    Status = walkOnJourney.Status == JourneyStatus.Completed ? TicketStatus.Used : TicketStatus.Active,
-                    RouteId = shift.RouteId,
-                    PurchasedAt = now
-                });
+                // Ensure non-null ExpectedArrivalTime on base Journey for walk-on hops
+                walkOnJourney.CreatedAt = now;
+                walkOnJourney.ExpectedArrivalTime = now;
+
+                _context.CashJourneys.Add(walkOnJourney);
 
                 string displayTicketId = $"CASH-{walkOnJourney.TicketReference.ToString().Substring(0, 8).ToUpper()}";
 

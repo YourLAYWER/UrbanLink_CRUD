@@ -452,6 +452,9 @@ namespace UrbanLink_CRUD.Migrations
                     b.Property<int>("EndStopID")
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("ExpectedArrivalTime")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("RedeemedAt")
                         .HasColumnType("datetime2");
 
