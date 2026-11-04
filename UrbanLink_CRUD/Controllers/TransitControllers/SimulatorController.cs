@@ -35,8 +35,8 @@ namespace UrbanLink_CRUD.Models.Dtos.TransitDtos
             Task.Run(async () =>
             {
                 // Starting coordinates in Gqeberha (e.g., NMU Summerstrand)
-                double currentLat = -33.954481;
-                double currentLng = 25.584365;
+                double currentLat = -33.956009;
+                double currentLng = 25.588995;
 
                 for (int i = 0; i < 20; i++)
                 {

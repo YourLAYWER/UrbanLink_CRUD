@@ -114,7 +114,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             // round up here too. Every time we display is then based on the exact instant it used.
             // NOTE: DateTime.Now is server-local time. Fine on your dev machine; on a UTC host,
             // convert with TimeZoneInfo to the agency's time zone instead.
-            var now = RoundUpToMinute(DateTime.Now);
+            //var now = RoundUpToMinute(DateTime.Now);
+            var now = RoundUpToMinute(DateTime.Today.AddHours(9));
 
             var routingResult = _routingService.ComputeRoute(
                 startStopId: request.StartStopId,
@@ -191,9 +192,9 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
 
             // NOTE: DateTime.Now is server-local time; on a UTC host, convert to the agency's time zone.
-            var now = RoundUpToMinute(DateTime.Now);
+            //var now = RoundUpToMinute(DateTime.Now);
             // TEMPORARY for testing: fixed 09:00. Swap back to DateTime.Now once routing works.
-            //var now = RoundUpToMinute(DateTime.Today.AddHours(9));
+           var now = RoundUpToMinute(DateTime.Today.AddHours(9));
 
             var routingResult = _routingService.ComputeRoute(
                 startStopId: request.StartStopId,
