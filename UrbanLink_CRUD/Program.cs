@@ -16,6 +16,7 @@ using UrbanLink_CRUD.Models.Domain.Payment;
 using UrbanLink_CRUD.Services.RoutingLogic;
 using UrbanLink_CRUD.Services.Workers;
 using UrbanLink_CRUD.Repositories;
+using UrbanLink_CRUD.Models.Domain.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -123,6 +124,12 @@ builder.Services.AddScoped<IPaymentStrategyFactory, PaymentStrategyFactory>();
 // Incident Strategies
 builder.Services.AddScoped<IIncidentStrategy, DelayIncidentStrategy>();
 builder.Services.AddScoped<IncidentStrategyResolver>();
+
+// The queue must be a Singleton so the Hub and the Batcher share the exact same memory instance
+builder.Services.AddSingleton<TelemetryQueue>();
+
+// Register the background worker
+builder.Services.AddHostedService<LocationAuditBatcher>();
 
 // Register Background Services & SignalR
 builder.Services.AddHostedService<TicketExpirationWorker>();

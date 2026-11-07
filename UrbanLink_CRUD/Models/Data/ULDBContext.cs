@@ -34,6 +34,7 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<Bus> Buses { get; set; }
         public DbSet<ConductorShift> ConductorShifts { get; set; }
         public DbSet<RouteSchedule> RouteSchedules { get; set; } = null!;
+        public DbSet<BusTelemetry> BusTelemetries { get; set; }
 
         // Incident Reporting
         public DbSet<IncidentReport> IncidentReports { get; set; } = null!;
