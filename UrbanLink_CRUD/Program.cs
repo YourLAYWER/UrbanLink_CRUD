@@ -16,6 +16,7 @@ using UrbanLink_CRUD.Models.Domain.Journey;
 using UrbanLink_CRUD.Models.Domain.Payment;
 using UrbanLink_CRUD.Models.Domain.SignalR;
 using UrbanLink_CRUD.Repositories;
+using UrbanLink_CRUD.Services.Encryption;
 using UrbanLink_CRUD.Services.RoutingLogic;
 using UrbanLink_CRUD.Services.Workers;
 
@@ -149,6 +150,9 @@ builder.Services.AddScoped<IncidentStrategyResolver>();
 
 // The queue must be a Singleton so the Hub and the Batcher share the exact same memory instance
 builder.Services.AddSingleton<TelemetryQueue>();
+
+// Encryption service for ticket
+builder.Services.AddSingleton<TicketSignatureService>();
 
 // Register the background worker
 builder.Services.AddHostedService<LocationAuditBatcher>();

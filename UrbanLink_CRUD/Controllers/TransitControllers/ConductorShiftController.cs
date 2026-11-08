@@ -92,6 +92,19 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         [Authorize(Roles = "Conductor, Driver")]
         public async Task<IActionResult> ScanTicket([FromBody] ScanTicketRequest request)
         {
+            // IDEMPOTENCY CHECK (Intercepts offline retries)
+            if (!string.IsNullOrEmpty(request.IdempotencyKey))
+            {
+                bool alreadyProcessed = await _context.OfflineSyncLogs.AnyAsync(l => l.IdempotencyKey == request.IdempotencyKey);
+                if (alreadyProcessed)
+                    return Ok(new { message = "Offline scan already synced safely." });
+            }
+
+            // ISOLATE THE GUID (Strips the |Expiry|Signature)
+            string rawQrData = request.QRCodeData ?? string.Empty;
+            string cleanGuidString = rawQrData.Contains('|') ? rawQrData.Split('|')[0] : rawQrData;
+            cleanGuidString = cleanGuidString.Replace("URBANLINK-", "", StringComparison.OrdinalIgnoreCase).Trim();
+
             if (!Guid.TryParse(request.QRCodeData, out Guid ticketGuid))
                 return BadRequest(new { message = "Invalid QR Code format." });
 
@@ -150,6 +163,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             {
                 journey.Status = JourneyStatus.Completed;
                 journey.RedeemedAt = DateTime.Now;
+            }
+
+            // 7.5 RECORD IDEMPOTENCY KEY TO PREVENT DOUBLE-SCANS
+            if (!string.IsNullOrEmpty(request.IdempotencyKey))
+            {
+                _context.OfflineSyncLogs.Add(new OfflineSyncLog { IdempotencyKey = request.IdempotencyKey });
             }
 
             _context.Journeys.Update(journey);

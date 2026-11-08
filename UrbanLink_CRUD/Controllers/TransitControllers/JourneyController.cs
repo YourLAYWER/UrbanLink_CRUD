@@ -12,6 +12,7 @@ using UrbanLink_CRUD.Models.Enums;
 using UrbanLink_CRUD.Services.RoutingLogic;
 using UrbanLink_CRUD.Models.Domain.Payment;
 using RoutingContext = UrbanLink_CRUD.Services.RoutingLogic.RoutingContext;
+using UrbanLink_CRUD.Services.Encryption;
 
 namespace UrbanLink_CRUD.Controllers.TransitControllers
 {
@@ -25,6 +26,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
         private readonly IRoutingStrategyFactory _routingFactory;
         private readonly IJourneyFactory _journeyFactory;
         private readonly IPaymentStrategyFactory _paymentFactory;
+        private readonly TicketSignatureService _signatureService;
 
         public JourneyController(
             ULDBContext context,
@@ -32,7 +34,8 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             IFareStrategyFactory fareFactory,
             IRoutingStrategyFactory routingFactory,
             IJourneyFactory journeyFactory,
-            IPaymentStrategyFactory paymentStrategy)
+            IPaymentStrategyFactory paymentStrategy,
+            TicketSignatureService signatureService)
         {
             _context = context;
             _routingService = routingService;
@@ -40,6 +43,7 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             _routingFactory = routingFactory;
             _journeyFactory = journeyFactory;
             _paymentFactory = paymentStrategy;
+            _signatureService = signatureService;
         }
 
         [HttpGet]
@@ -275,11 +279,26 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 .Distinct()
                 .ToList();
 
+            // CALCULATE EXPIRY: Add a reasonable buffer to the estimated arrival (e.g., 2 hours)
+            long expiryUnix = ((DateTimeOffset)estimatedArrival.AddHours(2)).ToUnixTimeSeconds();
+
+            // GET THE ROUTE: For multi-leg journeys, the QR code needs to be valid for their first bus.
+            int firstLegRouteId = routingResult.Legs.First().RouteId;
+
+            // GENERATE WAX SEAL: Pass the auto-generated GUID to the signature service
+            string secureQrCodeData = _signatureService.GenerateSecureQrCode(
+                ticketId: userJourney.TicketReference.ToString(),
+                expiryUnixTimestamp: expiryUnix,
+                routeId: firstLegRouteId
+            );
+
             return Ok(new
             {
                 message = "Journey purchased successfully",
                 JourneyId = userJourney.JourneyID,
-                ticketReference = userJourney.TicketReference,
+                // CRITICAL Returns the signed string instead of the raw GUID!
+                // The commuter's phone will now generate the QR Code image from this secure string.
+                ticketReference = secureQrCodeData,
                 totalCost = secureFinalFare,
                 estimatedDurationMinutes = routingResult.TotalTimeMinutes,
                 estimatedArrivalTime = userJourney.EstimatedArrivalTime.ToString("HH:mm"),
