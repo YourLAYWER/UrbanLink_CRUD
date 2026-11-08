@@ -336,6 +336,17 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int conductorId))
                 return Unauthorized(new { message = "Invalid token or user ID." });
 
+            // IDEMPOTENCY CHECK
+            if (!string.IsNullOrEmpty(request.IdempotencyKey))
+            {
+                bool alreadyProcessed = await _context.OfflineSyncLogs.AnyAsync(l => l.IdempotencyKey == request.IdempotencyKey);
+                if (alreadyProcessed)
+                {
+                    // Return 200 OK so Android clears the local Room queue, but skip generating journeys/cash!
+                    return Ok(new { message = "Offline transaction already synced safely." });
+                }
+            }
+
             if (request.PassengerCount <= 0)
                 return BadRequest(new { message = "Passenger count must be at least 1." });
 
@@ -386,7 +397,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 });
             }
 
-            // 6. One save: shift total, cash journeys and tickets together
+            //Save the cash sale AND the sync log together in one transaction
+            if (!string.IsNullOrEmpty(request.IdempotencyKey))
+            {
+                _context.OfflineSyncLogs.Add(new OfflineSyncLog { IdempotencyKey = request.IdempotencyKey });
+            }
+            // 6. One save: shift total, cash journeys and idempotency together
             try
             {
                 await _context.SaveChangesAsync();

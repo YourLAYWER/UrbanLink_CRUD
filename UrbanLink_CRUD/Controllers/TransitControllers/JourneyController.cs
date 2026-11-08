@@ -187,6 +187,17 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
             if (request.StartStopId == request.EndStopId)
                 return BadRequest(new { message = "Start and destination cannot be the same." });
 
+            // IDEMPOTENCY CHECK
+            if (!string.IsNullOrEmpty(request.IdempotencyKey))
+            {
+                bool alreadyProcessed = await _context.OfflineSyncLogs.AnyAsync(l => l.IdempotencyKey == request.IdempotencyKey);
+                if (alreadyProcessed)
+                {
+                    // Intercepts the retry! Returns 200 OK to clear the tablet's queue, avoiding the BadRequest trap.
+                    return Ok(new { message = "Offline scan already synced safely." });
+                }
+            }
+
             var preference = "fastest";
             _routingFactory.GetStrategy(preference);
 
@@ -250,6 +261,12 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
 
             userJourney.ExpectedArrivalTime = estimatedArrival;
             _context.UserJourneys.Add(userJourney);
+
+            // Save the log alongside the Leg updates
+            if (!string.IsNullOrEmpty(request.IdempotencyKey))
+            {
+                _context.OfflineSyncLogs.Add(new OfflineSyncLog { IdempotencyKey = request.IdempotencyKey });
+            }
 
             await _context.SaveChangesAsync();
 

@@ -562,6 +562,20 @@ namespace UrbanLink_CRUD.Migrations
                     b.ToTable("JourneyLegs");
                 });
 
+            modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.OfflineSyncLog", b =>
+                {
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<DateTime>("ProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("IdempotencyKey");
+
+                    b.ToTable("OfflineSyncLogs");
+                });
+
             modelBuilder.Entity("UrbanLink_CRUD.Models.Entities.Transit.RouteSchedule", b =>
                 {
                     b.Property<int>("ScheduleId")

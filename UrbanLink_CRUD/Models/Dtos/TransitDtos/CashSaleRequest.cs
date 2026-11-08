@@ -3,5 +3,7 @@
     public class CashSaleRequest
     {
         public int PassengerCount { get; set; } = 1;
+        public string IdempotencyKey { get; set; }
     }
 }
+

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
 using UrbanLink_CRUD.Models.Data;
@@ -13,12 +14,33 @@ using UrbanLink_CRUD.Models.Domain.Incident;
 using UrbanLink_CRUD.Models.Domain.Incident.FireBase;
 using UrbanLink_CRUD.Models.Domain.Journey;
 using UrbanLink_CRUD.Models.Domain.Payment;
+using UrbanLink_CRUD.Models.Domain.SignalR;
+using UrbanLink_CRUD.Repositories;
 using UrbanLink_CRUD.Services.RoutingLogic;
 using UrbanLink_CRUD.Services.Workers;
-using UrbanLink_CRUD.Repositories;
-using UrbanLink_CRUD.Models.Domain.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
+
+
+//==========================================================================
+// Add encryption services to the container.
+//==========================================================================
+// 1. Generate a fresh ECDSA key pair using the nistP256 curve (Standard for Android/Java)
+//using var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+
+//// 2. Export the Private Key (PKCS#8 format)
+//byte[] privateKeyBytes = ecdsa.ExportPkcs8PrivateKey();
+//string privateKeyBase64 = Convert.ToBase64String(privateKeyBytes);
+
+//// 3. Export the Public Key (X.509 SPKI format)
+//byte[] publicKeyBytes = ecdsa.ExportSubjectPublicKeyInfo();
+//string publicKeyBase64 = Convert.ToBase64String(publicKeyBytes);
+
+//// 4. Print to console so you can copy them
+//Console.WriteLine("\n--- COPY THESE TO YOUR NOTEPAD ---");
+//Console.WriteLine($"\nPRIVATE KEY (For appsettings.json):\n{privateKeyBase64}");
+//Console.WriteLine($"\nPUBLIC KEY (For Android):\n{publicKeyBase64}");
+//Console.WriteLine("\n----------------------------------\n");
 
 // =========================================================================
 // 1. REGISTER SERVICES

@@ -31,6 +31,8 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<Entities.Transit.UserJourney> UserJourneys { get; set; } = null!;
         public DbSet<Entities.Transit.CashJourney> CashJourneys { get; set; } = null!;
 
+        public DbSet<OfflineSyncLog> OfflineSyncLogs { get; set; } = null!;
+
         public DbSet<Bus> Buses { get; set; }
         public DbSet<ConductorShift> ConductorShifts { get; set; }
         public DbSet<RouteSchedule> RouteSchedules { get; set; } = null!;

@@ -4,5 +4,7 @@
     {
         //public int ShiftId { get; set; }
         public string QRCodeData {  get; set; }
+
+        public string IdempotencyKey { get; set; }
     }
 }

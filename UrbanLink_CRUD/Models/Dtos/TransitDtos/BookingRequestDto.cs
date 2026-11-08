@@ -11,6 +11,8 @@
         // Captures the exact card if "SavedCard" is used
         public int? CardId { get; set; }
 
+        public string IdempotencyKey { get; set; }
+
         // public string Preference { get; set; }
     }
 }
