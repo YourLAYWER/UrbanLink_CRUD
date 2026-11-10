@@ -263,21 +263,26 @@ namespace UrbanLink_CRUD.Models.Data
                     IsBidirectional = true,
                     BaseFare = 8.00m,
                     ProviderId = provider3.Id,
-                    RouteMapPath = "v|gnEuyk{Cc@f@eAnA{HdJcAjA]`@W^Y`@QVYb@W`@Wb@[l@[h@_AbByB~Dq@jAsAbCqA~BgB`Dm@fAgAnB[f@Wb@_@f@" +
-                    "/[`@]`@c@d@e@b@a@^_@ZYTc@Zo@^mBjAyFhDiDnBuBnAaAl@u@b@u@`@}@`@iBt@w@\\q@Xs@X_A^wB|@{@\\_@L_@Nk@Ne@Lw@P}@Ns@Hs@" +
-                    "Ds@FoBLoBN}E\\yE\\mEX{DXgEXqJp@qDVuHh@mBLkALy@Hu@JeBV{AX}A`@eAVcFzAaFxAmA^]J}Bp@w@TmBj@c@LuDfAeEnA_@JiAZe@FW" +
-                    "Fk@HgAJm@Di@@]@W@e@?g@Ak@Co@E{@Go@Ks@MmB_@}A[cDo@{Dw@uDu@sBa@eAUmB_@qBa@oAWc@IsBa@w@OwA[yAYuCk@iCi@{@Os@Oc@G" +
-                    "g@I}B_@cAO}@Im@Gk@Cm@Em@AuACcDB[?aDFkA@o@Au@Cc@Ea@CgAO{Eo@YCe@EmAIMAcAG_RaCkAOyAWaASy@Oc@Ie@GoAO}G}@yBY{MeB{" +
-                    "AQwASmAIeAES?s@Au@?w@Bk@Ba@Bm@Fu@H[Fc@Fg@HkAXeAX[J[Ja@NaA^eBl@{Aj@yAh@}Aj@eDlAkBp@wBv@kC`AyBv@}Aj@sAf@wAh@yB" +
-                    "v@s@Ve@PiA`@YLk@Rm@RwAh@WJaA\\}Bx@{Ah@}Al@eBn@cBn@}Aj@]L{@ZUHUJ_@Lg@Rk@Ve@Ts@^_@Pm@VYTWLOHyAp@sAj@sF`CsD~AwA" +
-                    "l@aCdAwCnAcBt@o@TyAZk@RgAd@CBWLIDMF]VSNgBjAw@j@e@`@[X_@\\g@h@s@t@kApAoArA{BbCyB~B]^qAtAoArAgBnBkCxCsK`OgLtOo" +
-                    "@z@}Vd]iVl\\_AnAaApAoVr\\iCnDU\\GHMVe@p@e@p@_AnAeAvAkA~AaArAmA`B[b@}AvBW^OTSZ]h@OR]h@Wb@a@v@a@v@]t@[x@}@zBgI" +
-                    "|SuVdo@uBhFcHtQsJvViIzSqDjJyClHkDfJ}A~DmAzCmC~GmB~EsAhDk@zAWn@Qf@Od@Qj@Sp@Sp@Qn@Ol@wAzFc@fBwA|FkEdQK\\}@pD_B" +
-                    "nGa@`BoAbFgCdK_@xAuJh`@w@vCqExQwAxFmDrN{EnR}FrUoDrNoB~HcIr[qLve@{GhXwBtI_ClJqAdFs@zCS|@Ot@Y|AKz@k@dEuAtJuAzJ" +
-                    "w@fFi@xDKr@KrAGp@I~AE`B?xA@vAF~BH~A`@rFp@nI^|EFlACfAAj@E|@Kr@Ov@On@Sn@Yr@q@hAyEdH{@nAuGxJ}A|Be@r@MTOVQ\\O^O`" +
-                    "@KZGXGZIb@Kp@SvAKl@G^GZIZGRGRGVQb@ITc@~@{AfDiAdCkAlCUf@o@vAcCrFoBlEgBzD}@pBg@jASd@Sj@O`@M`@Ql@]nAOj@YdAU~@g@" +
-                    "zB}A`HeArE]hB}@lDwArGoBrImBpIm@hCk@hC]zAi@~BaAdEuBnJiEdRYrAiB`IuAjGwAhGiBbIsAbGg@vBW~@Qp@KZO^KXMZO\\S`@Q^c@v" +
-                    "@s@pAaAbB]n@q@jASXUZOPKJKHMJKFMHKFKDIBMDE@MDMBSBM@O@S@Q?QAWCQCOCQGKCKEMGKGKGMIKIKGMMw@o@a@]aDoCyEaE",
+                    RouteMapPath = "v|gnEuyk{Cc@f@eAnA{HdJcAjA]`@W^Y`@QVYb@W`@Wb@[l@[h@_AbByB~Dq@jAsAbCq" +
+                    "A~BgB`Dm@fAgAnB[f@Wb@_@f@[`@]`@c@d@e@b@a@^_@ZYTc@Zo@^mBjAyFhDiDnBuBnAaAl@u@b@u@`@}@" +
+                    "`@iBt@w@\\q@Xs@X_A^wB|@{@\\_@L_@Nk@Ne@Lw@P}@Ns@Hs@Ds@FoBLoBN}E\\yE\\mEX{DXgEXqJp@qDVuHh" +
+                    "@mBLkALy@Hu@JeBV{AX}A`@eAVcFzAaFxAmA^]J}Bp@w@TmBj@c@LuDfAeEnA_@JiAZe@FWFk@HgAJm@Di@" +
+                    "@]@W@e@?g@Ak@Co@E{@Go@Ks@MmB_@}A[cDo@{Dw@uDu@sBa@eAUmB_@qBa@oAWc@IsBa@w@OwA[yAYuCk@" +
+                    "iCi@{@Os@Oc@Gg@I}B_@cAO}@Im@Gk@Cm@Em@AuACcDB[?aDFkA@o@Au@Cc@Ea@CgAO{Eo@YCe@EmAIMAcA" +
+                    "G_RaCkAOyAWaASy@Oc@Ie@GoAO}G}@yBY{MeB{AQwASmAIeAES?s@Au@?w@Bk@Ba@Bm@Fu@H[Fc@Fg@HkAX" +
+                    "eAX[J[Ja@NaA^eBl@{Aj@yAh@}Aj@eDlAkBp@wBv@kC`AyBv@}Aj@sAf@wAh@yBv@s@Ve@PiA`@YLk@Rm@R" +
+                    "wAh@WJaA\\}Bx@{Ah@}Al@eBn@cBn@}Aj@]L{@ZUHUJ_@Lg@Rk@Ve@Ts@^_@Pm@VYTWLOHyAp@sAj@sF`CsD" +
+                    "~AwAl@aCdAwCnAcBt@o@TyAZk@RgAd@CBWLIDMF]VSNgBjAw@j@e@`@[X_@\\g@h@s@t@kApAoArA{BbCyB~" +
+                    "B]^qAtAoArAgBnBkCxCsK`OgLtOo@z@}Vd]iVl\\_AnAaApAoVr\\iCnDU\\GHMVe@p@e@p@_AnAeAvAkA~AaA" +
+                    "rAmA`B[b@}AvBW^OTSZ]h@OR]h@Wb@a@v@a@v@]t@[x@}@zBgI|SuVdo@uBhFcHtQsJvViIzSqDjJyClHkD" +
+                    "fJ}A~DmAzCmC~GmB~EsAhDk@zAWn@Qf@Od@Qj@Sp@Sp@Qn@Ol@wAzFc@fBwA|FkEdQK\\}@pD_BnGa@`BoAb" +
+                    "FgCdK_@xAuJh`@w@vCqExQwAxFmDrN{EnR}FrUoDrNoB~HcIr[qLve@{GhXwBtI_ClJqAdFs@zCS|@Ot@Y|" +
+                    "AKz@k@dEuAtJuAzJw@fFi@xDKr@KrAGp@I~AE`B?xA@vAF~BH~A`@rFp@nI^|EFlACfAAj@E|@Kr@Ov@On@" +
+                    "Sn@Yr@q@hAyEdH{@nAuGxJ}A|Be@r@MTOVQ\\O^O`@KZGXGZIb@Kp@SvAKl@G^GZIZGRGRGVQb@ITc@~@{Af" +
+                    "DiAdCkAlCUf@o@vAcCrFoBlEgBzD}@pBg@jASd@Sj@Of@M`@Ql@]nAOj@YdAU~@g@zB}A`HeArE]hB}@lDw" +
+                    "ArGoBrImBpIm@hCk@hC]zAi@~BaAdEuBnJiEdRYrAiB`IuAjGwAhGiBbIsAbGg@vBW~@Qp@KZO^KXMZO\\S`" +
+                    "@Q^c@v@s@pAaAbB]n@q@jASXUZOPKJKHMJKFMHKFKDIBMDE@MDMBSBM@O@S@Q?QAWCQCOCQGKCKEMGKGKGM" +
+                    "IKIKGMMw@o@a@]aDoCyEaE",
                     Schedules = new List<RouteSchedule>
                     {
                         new RouteSchedule { Direction = RouteDirections.Inbound, DaysOfOperation = "Weekdays", FirstDepartureTime = new TimeSpan(5, 30, 0), LastDepartureTime = new TimeSpan(19, 0, 0), FrequencyMinutes = 30 },
