@@ -20,12 +20,15 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
 
         public decimal TotalCashCollected { get; set; }
 
-        // Retained based on your structure, though dynamic counting is still possible via the Journeys table
         public int DigitalTicketScanned { get; set; } = 0;
 
+        // Links this shift directly to all incident reports filed by the conductor during their shift
         public virtual ICollection<IncidentReport> IncidentReports { get; set; } = new List<IncidentReport>();
 
-        // THE AUDIT TRAIL: Links this shift directly to all anonymous cash walk-ons
+        // Links this shift directly to all anonymous cash walk-ons
         public virtual ICollection<CashJourney> CashJourneys { get; set; } = new List<CashJourney>();
+
+        // Links this shift directly to all card top-ups performed by the conductor
+        public virtual ICollection<CardTopUp> CardTopUps { get; set; } = new List<CardTopUp>();
     }
 }

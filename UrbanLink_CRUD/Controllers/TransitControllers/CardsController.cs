@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using UrbanLink_CRUD.Models.Dtos.TransitDtos;
 using UrbanLink_CRUD.Models.Entities;
+using UrbanLink_CRUD.Models.Entities.Transit;
 using UrbanLink_CRUD.Repositories;
+using UrbanLink_CRUD.Models.Data;
 
 namespace UrbanLink_CRUD.Controllers
 {
@@ -13,10 +16,12 @@ namespace UrbanLink_CRUD.Controllers
     public class CardsController : ControllerBase
     {
         private readonly ICardRepository _cardRepository;
+        private readonly ULDBContext _context;
 
-        public CardsController(ICardRepository cardRepository)
+        public CardsController(ICardRepository cardRepository, ULDBContext context)
         {
             _cardRepository = cardRepository;
+            _context = context;
         }
 
         // Helper to extract the authenticated User ID from the JWT
@@ -32,9 +37,9 @@ namespace UrbanLink_CRUD.Controllers
             int userId = GetCurrentUserId();
             if (userId == 0) return Unauthorized();
 
-            var cards = await _cardRepository.GetActiveCardsByUserIdAsync(userId);
-            
-            var response = cards.Select(c => new CardResponseDto
+            // 1. Fetch standard Payment Cards (Debit/Credit) via existing repo
+            var bankCards = await _cardRepository.GetActiveCardsByUserIdAsync(userId);
+            var paymentCardResponses = bankCards.Select(c => new CardResponseDto
             {
                 Id = c.Id,
                 CardHolderName = c.CardHolderName,
@@ -43,7 +48,91 @@ namespace UrbanLink_CRUD.Controllers
                 IsDefault = c.IsDefault
             });
 
-            return Ok(response);
+            // 2. Fetch Transit Provider Cards via EF Core
+            var transitCards = await _context.ProviderCards
+                .Include(tc => tc.Provider)
+                .Where(tc => tc.UserId == userId && tc.IsActive)
+                .Select(tc => new TransitCardResponseDto
+                {
+                    Id = tc.Id,
+                    ProviderId = tc.ProviderId,
+                    ProviderName = tc.Provider.Name,
+                    OperatorCardNumber = tc.OperatorCardNumber,
+                    Balance = tc.Balance,
+                    IssuedAt = tc.IssuedAt
+                })
+                .ToListAsync();
+
+            // 3. Combine them into a single Wallet response
+            var walletResponse = new UserWalletResponseDto
+            {
+                PaymentCards = paymentCardResponses,
+                TransitCards = transitCards
+            };
+
+            return Ok(walletResponse);
+        }
+
+        [HttpPost("generate")]
+        public async Task<IActionResult> GenerateDigitalCard([FromBody] GenerateWalletRequest request)
+        {
+            int userId = GetCurrentUserId();
+            if (userId == 0) return Unauthorized();
+
+            // 1. Verify Provider Exists
+            var providerExists = await _context.TransitProviders.AnyAsync(p => p.Id == request.ProviderId);
+            if (!providerExists)
+            {
+                return NotFound(new { message = "Transit provider not found." });
+            }
+
+            // 2. Enforce constraint: Max 1 card per provider per user
+            var existingCard = await _context.ProviderCards
+                .FirstOrDefaultAsync(c => c.UserId == userId && c.ProviderId == request.ProviderId);
+
+            if (existingCard != null)
+            {
+                return BadRequest(new { message = "You already have an active card for this provider." });
+            }
+
+            // 3. Mint unique 10-digit serial number
+            string newCardNumber = string.Empty;
+            bool isUnique = false;
+            Random rnd = new Random();
+
+            while (!isUnique)
+            {
+                // Combine two random 5-digit chunks
+                int part1 = rnd.Next(10000, 100000);
+                int part2 = rnd.Next(10000, 100000);
+                newCardNumber = $"{part1}{part2}";
+
+                // Verify against existing physical and digital cards in the system
+                isUnique = !await _context.ProviderCards.AnyAsync(c => c.OperatorCardNumber == newCardNumber);
+            }
+
+            // 4. Save the new digital wallet
+
+            var newCard = new ProviderCard
+            {
+                UserId = userId,
+                ProviderId = request.ProviderId,
+                OperatorCardNumber = newCardNumber,
+                Balance = 0.00m,
+                IsActive = true,
+                IssuedAt = DateTime.UtcNow
+            };
+
+            _context.ProviderCards.Add(newCard);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Digital card generated successfully.",
+                cardNumber = newCard.OperatorCardNumber,
+                balance = newCard.Balance,
+                providerId = newCard.ProviderId
+            });
         }
 
         [HttpPost]
@@ -82,7 +171,7 @@ namespace UrbanLink_CRUD.Controllers
             if (userId == 0) return Unauthorized();
 
             bool success = await _cardRepository.SetDefaultCardAsync(userId, id);
-            
+
             if (!success) return NotFound("Card not found or already inactive.");
 
             return Ok(new { message = "Default payment method updated." });
@@ -95,7 +184,7 @@ namespace UrbanLink_CRUD.Controllers
             if (userId == 0) return Unauthorized();
 
             bool success = await _cardRepository.SoftDeleteCardAsync(userId, id);
-            
+
             if (!success) return NotFound("Card not found.");
 
             return Ok(new { message = "Card removed successfully." });

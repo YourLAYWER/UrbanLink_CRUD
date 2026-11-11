@@ -20,8 +20,5 @@ namespace UrbanLink_CRUD.Models.Entities
         public bool IsActive { get; set; } = true; // Soft deactivation support
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        // Navigation property for provider-specific card linkages (if applicable)
-        public virtual ICollection<TransitCard> TransitCards { get; set; } = new List<TransitCard>();
     }
 }

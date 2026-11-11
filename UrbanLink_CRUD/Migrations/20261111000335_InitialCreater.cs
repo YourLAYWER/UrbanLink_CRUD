@@ -6,11 +6,40 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace UrbanLink_CRUD.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialCreater : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "BusTelemetries",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BusId = table.Column<int>(type: "int", nullable: false),
+                    RouteId = table.Column<int>(type: "int", nullable: false),
+                    Latitude = table.Column<decimal>(type: "decimal(10,8)", nullable: false),
+                    Longitude = table.Column<decimal>(type: "decimal(11,8)", nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BusTelemetries", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "OfflineSyncLogs",
+                columns: table => new
+                {
+                    IdempotencyKey = table.Column<string>(type: "nvarchar(36)", maxLength: 36, nullable: false),
+                    ProcessedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OfflineSyncLogs", x => x.IdempotencyKey);
+                });
+
             migrationBuilder.CreateTable(
                 name: "Products",
                 columns: table => new
@@ -59,20 +88,6 @@ namespace UrbanLink_CRUD.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Tickets",
-                columns: table => new
-                {
-                    TicketId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    QRCodeData = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Tickets", x => x.TicketId);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "TransitProviders",
                 columns: table => new
                 {
@@ -80,6 +95,7 @@ namespace UrbanLink_CRUD.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Type = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
                     APIEndpoint = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
@@ -94,9 +110,10 @@ namespace UrbanLink_CRUD.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Password = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Role = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     RefreshToken = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     RefreshTokenExpiryTime = table.Column<DateTime>(type: "datetime2", nullable: true)
@@ -133,8 +150,9 @@ namespace UrbanLink_CRUD.Migrations
                 {
                     JourneyID = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ExpectedArrivalTime = table.Column<DateTime>(type: "datetime2", nullable: false),
                     TicketReference = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     RedeemedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     EndStopID = table.Column<int>(type: "int", nullable: false),
@@ -219,6 +237,31 @@ namespace UrbanLink_CRUD.Migrations
                         principalTable: "TransitProviders",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Cards",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    CardHolderName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    MaskedCardNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ExpiryDate = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsDefault = table.Column<bool>(type: "bit", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Cards", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Cards_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -315,6 +358,64 @@ namespace UrbanLink_CRUD.Migrations
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ProviderCards",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    ProviderId = table.Column<int>(type: "int", nullable: false),
+                    OperatorCardNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    Balance = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    IssuedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProviderCards", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ProviderCards_TransitProviders_ProviderId",
+                        column: x => x.ProviderId,
+                        principalTable: "TransitProviders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ProviderCards_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserProviders",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    ProviderId = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    AssignedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserProviders", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserProviders_TransitProviders_ProviderId",
+                        column: x => x.ProviderId,
+                        principalTable: "TransitProviders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_UserProviders_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -503,6 +604,27 @@ namespace UrbanLink_CRUD.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Tickets",
+                columns: table => new
+                {
+                    TicketId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    QRCodeData = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    RouteId = table.Column<int>(type: "int", nullable: true),
+                    PurchasedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Tickets", x => x.TicketId);
+                    table.ForeignKey(
+                        name: "FK_Tickets_TransitRoute_RouteId",
+                        column: x => x.RouteId,
+                        principalTable: "TransitRoute",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "CartItems",
                 columns: table => new
                 {
@@ -554,6 +676,34 @@ namespace UrbanLink_CRUD.Migrations
                         principalTable: "Products",
                         principalColumn: "ProductID",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CardTopUps",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ConductorShiftId = table.Column<int>(type: "int", nullable: false),
+                    ProviderCardId = table.Column<int>(type: "int", nullable: false),
+                    AmountLoaded = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CardTopUps", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CardTopUps_ConductorShifts_ConductorShiftId",
+                        column: x => x.ConductorShiftId,
+                        principalTable: "ConductorShifts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_CardTopUps_ProviderCards_ProviderCardId",
+                        column: x => x.ProviderCardId,
+                        principalTable: "ProviderCards",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -644,6 +794,26 @@ namespace UrbanLink_CRUD.Migrations
                 column: "ProviderId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Cards_User_Default_Active",
+                table: "Cards",
+                columns: new[] { "UserId", "IsDefault", "IsActive" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cards_UserId_IsDefault_IsActive",
+                table: "Cards",
+                columns: new[] { "UserId", "IsDefault", "IsActive" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CardTopUps_ConductorShiftId",
+                table: "CardTopUps",
+                column: "ConductorShiftId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CardTopUps_ProviderCardId",
+                table: "CardTopUps",
+                column: "ProviderCardId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_CartItems_CartID",
                 table: "CartItems",
                 column: "CartID");
@@ -674,9 +844,9 @@ namespace UrbanLink_CRUD.Migrations
                 column: "BusId1");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ConductorShifts_ConductorId",
+                name: "IX_ConductorShifts_ConductorId_ShiftEndTime",
                 table: "ConductorShifts",
-                column: "ConductorId");
+                columns: new[] { "ConductorId", "ShiftEndTime" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_ConductorShifts_RouteId",
@@ -719,6 +889,17 @@ namespace UrbanLink_CRUD.Migrations
                 column: "EndStopID");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Journeys_Status_EndStopID",
+                table: "Journeys",
+                columns: new[] { "Status", "EndStopID" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Journeys_TicketReference",
+                table: "Journeys",
+                column: "TicketReference",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Notifications_UserId",
                 table: "Notifications",
                 column: "UserId");
@@ -742,6 +923,29 @@ namespace UrbanLink_CRUD.Migrations
                 name: "IX_Orders_UserId",
                 table: "Orders",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProviderCards_ProviderId",
+                table: "ProviderCards",
+                column: "ProviderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TransitCards_CardNumber",
+                table: "ProviderCards",
+                column: "OperatorCardNumber",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TransitCards_OperatorCardNumber",
+                table: "ProviderCards",
+                column: "OperatorCardNumber",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TransitCards_User_Provider",
+                table: "ProviderCards",
+                columns: new[] { "UserId", "ProviderId" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_RetailerProducts_RetailerId",
@@ -784,6 +988,11 @@ namespace UrbanLink_CRUD.Migrations
                 column: "StopId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Tickets_RouteId",
+                table: "Tickets",
+                column: "RouteId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TransitRoute_ProviderId",
                 table: "TransitRoute",
                 column: "ProviderId");
@@ -802,11 +1011,42 @@ namespace UrbanLink_CRUD.Migrations
                 name: "IX_UserJourneys_UserID",
                 table: "UserJourneys",
                 column: "UserID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserProviders_ProviderId",
+                table: "UserProviders",
+                column: "ProviderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserProviders_UserId_ProviderId",
+                table: "UserProviders",
+                columns: new[] { "UserId", "ProviderId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_Email",
+                table: "Users",
+                column: "Email",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_Role_IsActive",
+                table: "Users",
+                columns: new[] { "Role", "IsActive" });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "BusTelemetries");
+
+            migrationBuilder.DropTable(
+                name: "Cards");
+
+            migrationBuilder.DropTable(
+                name: "CardTopUps");
+
             migrationBuilder.DropTable(
                 name: "CartItems");
 
@@ -824,6 +1064,9 @@ namespace UrbanLink_CRUD.Migrations
 
             migrationBuilder.DropTable(
                 name: "Notifications");
+
+            migrationBuilder.DropTable(
+                name: "OfflineSyncLogs");
 
             migrationBuilder.DropTable(
                 name: "OrderItems");
@@ -845,6 +1088,12 @@ namespace UrbanLink_CRUD.Migrations
 
             migrationBuilder.DropTable(
                 name: "UserJourneys");
+
+            migrationBuilder.DropTable(
+                name: "UserProviders");
+
+            migrationBuilder.DropTable(
+                name: "ProviderCards");
 
             migrationBuilder.DropTable(
                 name: "Carts");

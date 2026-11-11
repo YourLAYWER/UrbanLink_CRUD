@@ -23,8 +23,9 @@ namespace UrbanLink_CRUD.Models.Data
         public DbSet<Entities.Transit.JourneyLeg> JourneyLegs { get; set; } = null!;
         public DbSet<TripDestination> TripDestinations { get; set; } = null!;
         public DbSet<Card> Cards { get; set; } = null!;
-        public DbSet<TransitCard> TransitCards { get; set; } = null!;
+        public DbSet<ProviderCard> ProviderCards { get; set; } = null!;
         public DbSet<UserProvider> UserProviders { get; set; } = null!;
+        public DbSet<CardTopUp> CardTopUps { get; set; } = null!;
 
         // NEW: Journey TPT DbSets
         public DbSet<Entities.Transit.Journey> Journeys { get; set; } = null!;
@@ -196,28 +197,28 @@ namespace UrbanLink_CRUD.Models.Data
             // NEW: CARDS & PROVIDER MAPPING CONFIGURATION
             // ----------------------------------------------------
 
-            // Card configuration
+            // Bank Card configuration (Kept clean, no longer linked to transit cards)
             modelBuilder.Entity<Card>(entity =>
             {
                 entity.HasOne(c => c.User)
                       .WithMany()
                       .HasForeignKey(c => c.UserId)
-                      .OnDelete(DeleteBehavior.Restrict); // Prevent deleting user from wiping card records silently
+                      .OnDelete(DeleteBehavior.Restrict);
 
-                // Optional: Composite index if not added via [Index] attribute on the Card class
                 entity.HasIndex(c => new { c.UserId, c.IsDefault, c.IsActive })
                       .HasDatabaseName("IX_Cards_UserId_IsDefault_IsActive");
             });
 
-            // TransitCard configuration (Operator-specific balance)
-            modelBuilder.Entity<TransitCard>(entity =>
+            // ProviderCard configuration (Decoupled digital wallet)
+            modelBuilder.Entity<ProviderCard>(entity =>
             {
                 entity.Property(tc => tc.Balance)
                       .HasPrecision(18, 2);
 
-                entity.HasOne(tc => tc.Card)
-                      .WithMany(c => c.TransitCards)
-                      .HasForeignKey(tc => tc.CardId)
+                // LINK DIRECTLY TO USER (Removed the CardId relationship)
+                entity.HasOne(tc => tc.User)
+                      .WithMany()
+                      .HasForeignKey(tc => tc.UserId)
                       .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(tc => tc.Provider)
@@ -225,10 +226,32 @@ namespace UrbanLink_CRUD.Models.Data
                       .HasForeignKey(tc => tc.ProviderId)
                       .OnDelete(DeleteBehavior.Restrict);
 
-                // Optional: Unique index if not added via [Index] attribute on the TransitCard class
+                // ENFORCE: Max 1 card per user per provider
+                entity.HasIndex(tc => new { tc.UserId, tc.ProviderId })
+                      .IsUnique()
+                      .HasDatabaseName("IX_TransitCards_User_Provider");
+
+                // ENFORCE: Unique 10-digit card number across the entire system
                 entity.HasIndex(tc => tc.OperatorCardNumber)
                       .IsUnique()
                       .HasDatabaseName("IX_TransitCards_OperatorCardNumber");
+            });
+
+            // NEW: CardTopUp configuration (Driver Cash Audit Trail)
+            modelBuilder.Entity<CardTopUp>(entity =>
+            {
+                entity.Property(t => t.AmountLoaded)
+                      .HasPrecision(18, 2);
+
+                entity.HasOne(t => t.Shift)
+                      .WithMany(s => s.CardTopUps)
+                      .HasForeignKey(t => t.ConductorShiftId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(t => t.Card)
+                      .WithMany(c => c.TopUps)
+                      .HasForeignKey(t => t.ProviderCardId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             // UserProvider configuration (Multi-tenant staff mapping)
@@ -244,12 +267,10 @@ namespace UrbanLink_CRUD.Models.Data
                       .HasForeignKey(up => up.ProviderId)
                       .OnDelete(DeleteBehavior.Restrict);
 
-                // Composite index to prevent assigning the same user to the same provider twice
                 entity.HasIndex(up => new { up.UserId, up.ProviderId })
                       .IsUnique()
                       .HasDatabaseName("IX_UserProviders_UserId_ProviderId");
             });
-
             // ----------------------------------------------------
             // OPTIONAL: FLUENT PERFORMANCE INDEXES 
             // (Only add these if you did NOT put [Index] on the entity classes)
