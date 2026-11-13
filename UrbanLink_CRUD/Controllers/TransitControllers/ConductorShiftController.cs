@@ -10,6 +10,8 @@ using UrbanLink_CRUD.Models.Domain.Journey;
 using UrbanLink_CRUD.Models.Dtos.TransitDtos;
 using UrbanLink_CRUD.Models.Entities.Transit;
 using UrbanLink_CRUD.Models.Enums;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace UrbanLink_CRUD.Controllers.TransitControllers
 {
@@ -464,6 +466,75 @@ namespace UrbanLink_CRUD.Controllers.TransitControllers
                 receipts = issuedTickets,
                 activeQueue = activeQueue
             });
+        }
+
+        [HttpPost("validate-tap")]
+        public async Task<IActionResult> ValidateNfcTap([FromBody] NfcTapRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.NfcPayload) || !request.NfcPayload.Contains('.'))
+                return BadRequest("Invalid NFC payload format.");
+
+            // 1. Split the payload into Card Number and Hash
+            var parts = request.NfcPayload.Split('.');
+            var operatorCardNumber = parts[0];
+            var receivedHash = parts[1];
+
+            // 2. Lookup the card
+            var card = await _context.ProviderCards
+                .FirstOrDefaultAsync(c => c.OperatorCardNumber == operatorCardNumber);
+
+            if (card == null)
+                return NotFound("Transit card not recognized.");
+
+            // 3. Validate the cryptographic hash
+            bool isValid = ValidateTimeBasedHash(card.CryptoSeed, receivedHash);
+
+            if (!isValid)
+                return Unauthorized("Card authentication failed. Token expired or invalid.");
+
+            // 4. (Next Step) Deduct fare or check balance here
+            // For now, returning the verified card details
+
+            return Ok(new
+            {
+                Message = "Tap verified successfully.",
+                CurrentBalance = card.Balance,
+                CardId = card.Id
+            });
+        }
+
+        private bool ValidateTimeBasedHash(string cryptoSeed, string receivedHash)
+        {
+            if (string.IsNullOrEmpty(cryptoSeed)) return false;
+
+            // Get the current UNIX timestamp window (30-second blocks)
+            long currentWindow = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30;
+
+            // Check current, previous (-1), and next (+1) windows to handle slight clock drift
+            long[] windowsToTest = { currentWindow, currentWindow - 1, currentWindow + 1 };
+
+            byte[] keyBytes = Convert.FromBase64String(cryptoSeed);
+
+            foreach (long window in windowsToTest)
+            {
+                // Convert the time window integer to bytes
+                byte[] messageBytes = Encoding.UTF8.GetBytes(window.ToString());
+
+                // Hash the time window using the secret CryptoSeed
+                using var hmac = new HMACSHA256(keyBytes);
+                byte[] hashBytes = hmac.ComputeHash(messageBytes);
+
+                // Convert to a clean Hex string for NFC transmission
+                string expectedHash = Convert.ToHexString(hashBytes);
+
+                // If any of the windows match, the tap is authentic!
+                if (expectedHash.Equals(receivedHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         [HttpGet("active-shift-info")]

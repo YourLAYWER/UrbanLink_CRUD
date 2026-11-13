@@ -8,5 +8,6 @@ namespace UrbanLink_CRUD.Models.Dtos.TransitDtos
         public string OperatorCardNumber { get; set; }
         public decimal Balance { get; set; }
         public DateTime IssuedAt { get; set; }
+        public string CryptoSeed { get; set; }
     }
 }

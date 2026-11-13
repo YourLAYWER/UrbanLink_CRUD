@@ -7,6 +7,7 @@ using UrbanLink_CRUD.Models.Entities;
 using UrbanLink_CRUD.Models.Entities.Transit;
 using UrbanLink_CRUD.Repositories;
 using UrbanLink_CRUD.Models.Data;
+using System.Security.Cryptography;
 
 namespace UrbanLink_CRUD.Controllers
 {
@@ -120,7 +121,8 @@ namespace UrbanLink_CRUD.Controllers
                 OperatorCardNumber = newCardNumber,
                 Balance = 0.00m,
                 IsActive = true,
-                IssuedAt = DateTime.UtcNow
+                IssuedAt = DateTime.UtcNow,
+                CryptoSeed = GenerateSecureCryptoSeed()
             };
 
             _context.ProviderCards.Add(newCard);
@@ -133,6 +135,13 @@ namespace UrbanLink_CRUD.Controllers
                 balance = newCard.Balance,
                 providerId = newCard.ProviderId
             });
+        }
+
+        private string GenerateSecureCryptoSeed()
+        {
+            var key = new byte[32];
+            RandomNumberGenerator.Fill(key);
+            return Convert.ToBase64String(key);
         }
 
         [HttpPost]

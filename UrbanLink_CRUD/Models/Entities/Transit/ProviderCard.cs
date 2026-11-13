@@ -27,6 +27,8 @@ namespace UrbanLink_CRUD.Models.Entities.Transit
 
         public DateTime IssuedAt { get; set; } = DateTime.UtcNow;
 
+        public string CryptoSeed { get; set; } = string.Empty;
+
         // Navigation Property: Link this to the top-ups we discussed!
         public virtual ICollection<CardTopUp> TopUps { get; set; } = new List<CardTopUp>();
     }
